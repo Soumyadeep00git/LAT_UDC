@@ -1,0 +1,411 @@
+<title>Interceptor Sizing Architecture</title>
+<style>
+  :root {
+    --paper:#F5F7F9; --panel:#FFFFFF; --panel-2:#EEF2F5;
+    --ink:#151C24; --muted:#5B6B7A; --faint:#8394A3;
+    --line:#D3DBE2; --line-strong:#B9C4CD;
+    --accent:#2C6E9B;            /* drafting blue — the physics / coupling hue */
+    --arch1:#B0742A;             /* concrete, "which" */
+    --arch2:#188E80;             /* generative, "why" */
+    --good:#2F8F5B; --warn:#C08A2E;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --paper:#0C1117; --panel:#131A22; --panel-2:#0F161D;
+      --ink:#E5EBF1; --muted:#93A2B1; --faint:#63717F;
+      --line:#26313D; --line-strong:#33414F;
+      --accent:#5EA6D4; --arch1:#D6A15C; --arch2:#3FBAAC;
+      --good:#54B583; --warn:#D6A65A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#0C1117; --panel:#131A22; --panel-2:#0F161D;
+    --ink:#E5EBF1; --muted:#93A2B1; --faint:#63717F;
+    --line:#26313D; --line-strong:#33414F;
+    --accent:#5EA6D4; --arch1:#D6A15C; --arch2:#3FBAAC;
+    --good:#54B583; --warn:#D6A65A;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    background:var(--paper); color:var(--ink); font-family:var(--sans);
+    line-height:1.6; margin:0; padding:0;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:1060px; margin:0 auto; padding:56px 28px 90px; }
+
+  /* ---- rhythm ---- */
+  h1,h2,h3 { text-wrap:balance; line-height:1.15; margin:0; }
+  .eyebrow {
+    font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--accent); font-weight:600;
+  }
+  section { margin-top:64px; }
+  .sec-head { display:flex; align-items:baseline; gap:16px; border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:26px; }
+  .sec-num { font-family:var(--mono); font-size:13px; color:var(--faint); font-weight:600; }
+  h2 { font-size:23px; font-weight:680; letter-spacing:-.01em; }
+  p { margin:0 0 14px; max-width:68ch; }
+  .lead { color:var(--muted); }
+  a { color:var(--accent); }
+  code, .m { font-family:var(--mono); }
+  .m { font-size:.92em; color:var(--ink); background:var(--panel-2); padding:1px 6px; border-radius:4px; border:1px solid var(--line); }
+
+  /* ---- header ---- */
+  header { border-bottom:2px solid var(--ink); padding-bottom:30px; }
+  h1 { font-size:40px; font-weight:720; letter-spacing:-.02em; margin:14px 0 18px; }
+  .thesis {
+    font-family:var(--mono); font-size:15px; color:var(--ink);
+    background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent);
+    padding:16px 18px; border-radius:6px; max-width:none; line-height:1.7;
+  }
+  .thesis b { color:var(--accent); font-weight:600; }
+  .thesis .a1 { color:var(--arch1); font-weight:600; }
+  .thesis .a2 { color:var(--arch2); font-weight:600; }
+
+  /* ---- model datasheet grid ---- */
+  .models { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+  .card {
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px 18px 16px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .card-h { display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+  .card-h h3 { font-size:16px; font-weight:660; letter-spacing:-.01em; }
+  .tag { font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); border:1px solid var(--line); border-radius:20px; padding:2px 9px; white-space:nowrap; }
+  .ports { font-family:var(--mono); font-size:12.5px; line-height:1.75; }
+  .ports .k { color:var(--accent); }
+  .ports .in { color:var(--muted); }
+  .eq { font-family:var(--mono); font-size:12.5px; background:var(--panel-2); border:1px solid var(--line); border-radius:5px; padding:8px 10px; color:var(--ink); overflow-x:auto; }
+  .fid { font-size:12.5px; color:var(--muted); }
+  .fid b { color:var(--ink); font-weight:600; }
+
+  /* ---- figure ---- */
+  figure { margin:8px 0 0; }
+  figure svg { display:block; width:100%; height:auto; color:var(--ink); }
+  figcaption { font-size:13px; color:var(--muted); margin-top:12px; font-family:var(--sans); max-width:70ch; }
+  .fig-wrap { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:22px; overflow-x:auto; }
+
+  /* ---- forward pipeline flow ---- */
+  .flow { display:flex; flex-wrap:wrap; align-items:stretch; gap:0; font-family:var(--mono); font-size:12.5px; }
+  .stage { background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:11px 13px; flex:1 1 0; min-width:120px; }
+  .stage .t { color:var(--accent); font-weight:600; display:block; margin-bottom:3px; }
+  .stage .d { color:var(--muted); font-size:11.5px; line-height:1.5; }
+  .arrow-h { align-self:center; color:var(--faint); padding:0 8px; font-size:16px; }
+
+  /* ---- table ---- */
+  .tbl-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:8px; }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th,td { text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:600; background:var(--panel-2); }
+  tr:last-child td { border-bottom:none; }
+  td .p { font-family:var(--mono); color:var(--accent); font-weight:600; }
+  td .f { font-family:var(--mono); font-size:12.5px; color:var(--ink); }
+  td.trade { color:var(--muted); }
+
+  /* ---- two-arch panels ---- */
+  .arch2col { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .apanel { border:1px solid var(--line); border-radius:9px; padding:20px; background:var(--panel); }
+  .apanel.one { border-top:3px solid var(--arch1); }
+  .apanel.two { border-top:3px solid var(--arch2); }
+  .apanel h3 { font-size:17px; font-weight:680; margin-bottom:4px; }
+  .apanel .sub { font-family:var(--mono); font-size:12px; color:var(--muted); margin-bottom:14px; }
+  .apanel.one h3 { color:var(--arch1); } .apanel.two h3 { color:var(--arch2); }
+  .apanel ul { margin:0; padding-left:18px; font-size:13.5px; }
+  .apanel li { margin-bottom:7px; }
+  .formula { font-family:var(--mono); font-size:13px; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:14px; }
+  .formula .free { color:var(--arch2); font-weight:600; }
+  .formula .fix { color:var(--arch1); font-weight:600; }
+
+  .note { font-size:13px; color:var(--muted); font-style:italic; }
+  .status { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+  .chip { font-family:var(--mono); font-size:11.5px; padding:4px 10px; border-radius:20px; border:1px solid var(--line); color:var(--muted); }
+  .chip.done { color:var(--good); border-color:color-mix(in srgb, var(--good) 45%, var(--line)); }
+  .chip.now { color:var(--accent); border-color:color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .chip.next { color:var(--muted); }
+
+  @media (max-width:760px) {
+    .models { grid-template-columns:1fr; }
+    .arch2col { grid-template-columns:1fr; }
+    h1 { font-size:31px; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">SpecimenLab · sizing engine</div>
+    <h1>Interceptor Sizing Architecture</h1>
+    <div class="thesis">
+      A specimen <b>x</b> passes through a physics map <b>f</b> to produce mission output <b>y = f(x)</b>.<br>
+      <span class="a1">Architecture&nbsp;1</span> — fix <b>f</b> (the platform), tune <b>x</b>. Output is bounded by the <span class="a1">class of x</span>.<br>
+      <span class="a2">Architecture&nbsp;2</span> — free <b>f</b> itself under the physical invariants <b>F</b>. Output is bounded only by <span class="a2">physics</span>.
+    </div>
+  </header>
+
+  <!-- ============ MODELS ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">§1</span><h2>Six models</h2></div>
+    <p class="lead">Each model is a transfer function with explicit ports. They are <em>coupled</em>, not a pipeline — §2 shows the loops. Every model carries two readings: the <span style="color:var(--arch1)">selective</span> form (Arch&nbsp;1, pick a member) and the <span style="color:var(--arch2)">invariant</span> form (Arch&nbsp;2, the conservation bound with the form left free).</p>
+
+    <div class="models">
+
+      <div class="card">
+        <div class="card-h"><h3>3 · Prop</h3><span class="tag">actuator disk</span></div>
+        <div class="ports">
+          <div><span class="k">in</span> <span class="in">Ω (rpm), airspeed V, ρ, D, pitch P, blades B</span></div>
+          <div><span class="k">out</span> thrust T, torque Q, efficiency η<sub>p</sub></div>
+        </div>
+        <div class="eq">J = V/(ΩD)   ·   T = C_T(J)·ρΩ²D⁴   ·   Q = C_Q(J)·ρΩ²D⁵</div>
+        <div class="fid"><b>Selective:</b> C_T,C_Q from a specific prop, J-dependent. <b>Invariant:</b> T ≤ (2ρA)<sup>⅓</sup>P<sup>⅔</sup> — momentum theory; A, count, ducting <em>free</em>.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>4 · Motor</h3><span class="tag">DC / BLDC</span></div>
+        <div class="ports">
+          <div><span class="k">in</span> <span class="in">V_bus, Q demand, Kv, R_m, I₀, I_max</span></div>
+          <div><span class="k">out</span> Ω, current I, η_m, heat I²R</div>
+        </div>
+        <div class="eq">K_t = 60/(2πKv)   ·   τ = K_t(I−I₀)   ·   V = IR_m + Ω/Kv_SI</div>
+        <div class="fid"><b>Selective:</b> pick Kv,R_m; solve τ=Q equilibrium. <b>Invariant:</b> P_shaft ≤ η·P_elec, τ bounded by thermal I²R — realization (Kv, poles) <em>free</em>.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>5 · Battery</h3><span class="tag">source</span></div>
+        <div class="ports">
+          <div><span class="k">in</span> <span class="in">cells S, capacity, C-rate, I_draw, chemistry</span></div>
+          <div><span class="k">out</span> V_bus (sag), E_usable, I_burst, mass</div>
+        </div>
+        <div class="eq">V_bus = S·V_cell − I·R_int   ·   E = S·Cap·V·DoD   ·   m = E/ρ_E</div>
+        <div class="fid"><b>Selective:</b> a pack (S, mAh, C). <b>Invariant:</b> energy density ρ_E ≤ chemistry ceiling (your 400 Wh/kg), power = V·I — topology <em>free</em>.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>1 · Aero</h3><span class="tag">forces &amp; moments</span></div>
+        <div class="ports">
+          <div><span class="k">in</span> <span class="in">V, α, β, rates, geometry, ρ</span></div>
+          <div><span class="k">out</span> drag, side/lift force, 6 aero moments</div>
+        </div>
+        <div class="eq">F = ½ρV²·A·C(α,β)   ·   trim: T·sinθ = drag, T·cosθ = W</div>
+        <div class="fid"><b>Selective:</b> bluff-body C_d of a quad. <b>Invariant:</b> lift/drag polar of <em>any</em> shape — a wing trades C_d for C_L, changing the whole force balance.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>2 · Structures</h3><span class="tag">mass &amp; inertia</span></div>
+        <div class="ports">
+          <div><span class="k">in</span> <span class="in">T_max, arm L, load factor n_g, material</span></div>
+          <div><span class="k">out</span> m_struct, inertia tensor I, load limit</div>
+        </div>
+        <div class="eq">σ(T·L) ≤ σ_allow  →  m_arm ∝ T·L·ρ_mat/σ   ·   I = Σ mᵢrᵢ²</div>
+        <div class="fid"><b>Selective:</b> size arms of a fixed frame. <b>Invariant:</b> min mass to carry the load path — geometry (truss, monocoque, rotor count) <em>free</em>.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>6 · Dynamics</h3><span class="tag">6&nbsp;DOF · Newton–Euler</span></div>
+        <div class="ports">
+          <div><span class="k">in</span> <span class="in">rotor thrusts, aero F/M, gravity, I</span></div>
+          <div><span class="k">out</span> trajectory: pos, vel, attitude q, rates ω</div>
+        </div>
+        <div class="eq">m(v̇+ω×v)=ΣF   ·   Iω̇+ω×(Iω)=ΣM   ·   q̇=½q⊗ω</div>
+        <div class="fid"><b>Selective:</b> quad control allocation. <b>Invariant:</b> the real agility limit — turn-rate &amp; thrust-vector slew set by I and control moment (τ, the true "jerk"), not a scalar a_max.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ COUPLING ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">§2</span><h2>The coupling is a fixed point</h2></div>
+    <p class="lead">The models don't run once in order — they close two loops, so a config resolves by iterating to consistency (mass ⇄ thrust ⇄ rpm ⇄ load) before any trajectory is flown.</p>
+    <div class="fig-wrap">
+      <figure>
+        <svg viewBox="0 0 720 360" role="img" aria-label="Coupling diagram: battery to motor to prop to dynamics, with a structures mass-load loop and an aero advance-ratio loop feeding back, making the solve a fixed point.">
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="currentColor"/></marker>
+            <marker id="ahA" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#2C6E9B"/></marker>
+          </defs>
+          <!-- top chain -->
+          <g font-family="ui-monospace,monospace" font-size="13">
+            <g>
+              <rect x="24" y="52" width="120" height="46" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <text x="84" y="80" text-anchor="middle" fill="currentColor">Battery</text>
+            </g>
+            <g>
+              <rect x="216" y="52" width="120" height="46" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <text x="276" y="80" text-anchor="middle" fill="currentColor">Motor</text>
+            </g>
+            <g>
+              <rect x="408" y="52" width="120" height="46" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <text x="468" y="80" text-anchor="middle" fill="currentColor">Prop</text>
+            </g>
+            <g>
+              <rect x="576" y="150" width="120" height="46" rx="7" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              <text x="636" y="178" text-anchor="middle" fill="currentColor" font-weight="600">Dynamics</text>
+            </g>
+            <g>
+              <rect x="408" y="252" width="120" height="46" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <text x="468" y="280" text-anchor="middle" fill="currentColor">Structure</text>
+            </g>
+            <g>
+              <rect x="216" y="252" width="120" height="46" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <text x="276" y="280" text-anchor="middle" fill="currentColor">Aero</text>
+            </g>
+          </g>
+          <!-- forward edges -->
+          <g font-family="ui-monospace,monospace" font-size="11" fill="currentColor">
+            <line x1="144" y1="75" x2="210" y2="75" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+            <text x="177" y="67" text-anchor="middle">V bus</text>
+            <line x1="336" y1="75" x2="402" y2="75" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+            <text x="369" y="67" text-anchor="middle">rpm·τ</text>
+            <path d="M528,75 L636,75 L636,150" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah)"/>
+            <text x="600" y="67" text-anchor="middle">T · Q</text>
+          </g>
+          <!-- feedback loop 1: dynamics -> structure -> mass -> back (accent) -->
+          <g font-family="ui-monospace,monospace" font-size="11" fill="#2C6E9B">
+            <path d="M576,180 L540,180 L540,262 L534,262" fill="none" stroke="#2C6E9B" stroke-width="1.6" marker-end="url(#ahA)"/>
+            <text x="556" y="225" text-anchor="middle">g-loads</text>
+            <path d="M468,252 L468,110" fill="none" stroke="#2C6E9B" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ahA)"/>
+            <text x="500" y="180" text-anchor="middle">mass, I</text>
+          </g>
+          <!-- feedback loop 2: dynamics -> aero -> prop advance ratio (accent) -->
+          <g font-family="ui-monospace,monospace" font-size="11" fill="#2C6E9B">
+            <path d="M576,186 L276,186 L276,252" fill="none" stroke="#2C6E9B" stroke-width="1.6" marker-end="url(#ahA)"/>
+            <text x="360" y="178" text-anchor="middle">airspeed V</text>
+            <path d="M300,252 L360,120 L402,90" fill="none" stroke="#2C6E9B" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ahA)"/>
+            <text x="330" y="150" text-anchor="middle" fill="#2C6E9B">drag → J, tilt</text>
+          </g>
+        </svg>
+        <figcaption><b>Black</b> = forward supply chain (energy → thrust). <span style="color:var(--accent);font-weight:600">Blue</span> = the two feedbacks that make it a fixed point: maneuver g-loads size the structure whose mass changes the achievable maneuver; and airspeed sets the prop's advance ratio, so thrust at speed depends on the speed it produces. Solve to consistency, <em>then</em> fly the trajectory.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ FORWARD PIPELINE ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">§3</span><h2>Forward flow: config → mission</h2></div>
+    <p class="lead">The evaluation path both architectures share. Arch&nbsp;1 loops the last arrow (tune x); Arch&nbsp;2 additionally rewrites the first box (change f).</p>
+    <div class="flow">
+      <div class="stage"><span class="t">config x</span><span class="d">the 7+ design features (+ topology in Arch 2)</span></div>
+      <span class="arrow-h">→</span>
+      <div class="stage"><span class="t">fixed-point solve</span><span class="d">§1 models iterated to consistency</span></div>
+      <span class="arrow-h">→</span>
+      <div class="stage"><span class="t">capability envelope</span><span class="d">v_max, a_max, turn-rate τ, range, endurance</span></div>
+      <span class="arrow-h">→</span>
+      <div class="stage"><span class="t">6-DOF engagement</span><span class="d">vs threat set Θ, guidance + autopilot</span></div>
+      <span class="arrow-h">→</span>
+      <div class="stage"><span class="t">mission metrics</span><span class="d">coverage margin, miss, time, energy</span></div>
+    </div>
+  </section>
+
+  <!-- ============ MISSION CRITERIA ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">§4</span><h2>Mission criteria</h2></div>
+    <p class="lead">A threat <span class="m">θ = (v_T, a_T, R₀, evasion)</span>. The <b>defeat condition</b> is analytic — the interceptor's capability vector must dominate the required interception kinematics:</p>
+    <div class="eq" style="max-width:640px; margin-bottom:16px;">defeat(θ) ⇔  v ≥ v_req(θ)  ∧  a ≥ N·a_T  ∧  τ ≤ τ_req(evasion)  ∧  reach ≥ R₀</div>
+    <p>Objective is the <b>weighted coverage margin</b>, not a count — the max-margin fix from the earlier critique, so the optimizer always has gradient:</p>
+    <div class="eq" style="max-width:640px;">maximize  J = Σᵢ wᵢ · margin(θᵢ)     s.t.  buildable(mass, σ, thermal, cost)</div>
+    <p class="note" style="margin-top:14px;">Secondary objectives (time, energy, cost) resolve the Pareto face once coverage margin is satisfied. "Best performance" = the design whose capability envelope dominates the largest weighted share of Θ at least cost.</p>
+  </section>
+
+  <!-- ============ ANALYTICAL MATCHING ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">§5</span><h2>Analytical solve — per-parameter matching</h2></div>
+    <p class="lead">Each parameter has a <em>closed-form optimum given the others</em> — a matching condition. The full optimum is the fixed point of these conditions (analytic per parameter, iterate the coupling), which is far cheaper and more inspectable than blind search.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>parameter</th><th>matching condition (closed form)</th><th>what it trades</th></tr></thead>
+        <tbody>
+          <tr><td><span class="p">prop D</span></td><td class="f">max A until tip Mach: πΩD ≤ 0.5·a_snd; hover eff ↑ (2ρA)<sup>⅓</sup></td><td class="trade">efficiency ↑ vs structure mass &amp; tip loss</td></tr>
+          <tr><td><span class="p">pitch P</span></td><td class="f">J_cruise ≈ 0.7·J₀ → P ≈ 60·v_max/(Ω·η)</td><td class="trade">top speed vs static thrust</td></tr>
+          <tr><td><span class="p">motor Kv</span></td><td class="f">Kv ≈ 60·Ω_req/(V_bus·η)</td><td class="trade">rpm match vs torque (K_t = 60/2πKv)</td></tr>
+          <tr><td><span class="p">cells S</span></td><td class="f">S ≥ P_peak/(I_max·V_cell)</td><td class="trade">↑S → ↓current, ↓I²R loss &amp; sag vs pack mass</td></tr>
+          <tr><td><span class="p">capacity</span></td><td class="f">Cap = E_mission/(S·V·DoD)</td><td class="trade">endurance vs mass</td></tr>
+          <tr><td><span class="p">structure</span></td><td class="f">t_arm: σ(T_max·L) = σ_allow (beam bending)</td><td class="trade">stiffness/strength vs mass &amp; inertia</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ TWO ARCHITECTURES ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">§6</span><h2>Two architectures — the real difference</h2></div>
+    <p class="lead">Both maximize <span class="m">y = f(x)</span>. The difference is what is held fixed. Draw it as a ceiling: Arch&nbsp;1 optimizes up to the class bound; Arch&nbsp;2 rewrites <b>f</b> to break through it.</p>
+
+    <div class="fig-wrap" style="margin-bottom:22px;">
+      <figure>
+        <svg viewBox="0 0 720 300" role="img" aria-label="Comparison: Architecture 1 optimizes x within a fixed platform class and saturates at a class ceiling; Architecture 2 varies the mechanism f within physics invariants and rises past that ceiling toward a higher physics bound.">
+          <defs><marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="currentColor"/></marker></defs>
+          <!-- axes -->
+          <g font-family="ui-monospace,monospace" font-size="11">
+            <line x1="60" y1="255" x2="660" y2="255" stroke="currentColor" stroke-width="1.2"/>
+            <line x1="60" y1="255" x2="60" y2="35" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah2)"/>
+            <text x="52" y="30" text-anchor="end" fill="currentColor">y</text>
+            <text x="360" y="285" text-anchor="middle" fill="currentColor">design effort  →</text>
+          </g>
+          <!-- physics bound (upper dashed) -->
+          <line x1="60" y1="70" x2="660" y2="70" stroke="#188E80" stroke-width="1.3" stroke-dasharray="2 5"/>
+          <text x="655" y="63" text-anchor="end" font-family="ui-monospace,monospace" font-size="11" fill="#188E80">physics bound (Arch 2 ceiling)</text>
+          <!-- class ceiling -->
+          <line x1="60" y1="165" x2="410" y2="165" stroke="#B0742A" stroke-width="1.3" stroke-dasharray="6 4"/>
+          <text x="70" y="157" font-family="ui-monospace,monospace" font-size="11" fill="#B0742A">class bound  y ≤ 51%  (f = quad)</text>
+          <!-- arch1 curve: rises then saturates at class ceiling -->
+          <path d="M60,240 C150,190 250,168 410,165" fill="none" stroke="#B0742A" stroke-width="2.4"/>
+          <text x="300" y="205" font-family="ui-monospace,monospace" font-size="12" fill="#B0742A" font-weight="600">Arch 1 · tune x</text>
+          <!-- arch2 curve: continues past ceiling toward physics bound -->
+          <path d="M410,165 C470,140 520,95 660,78" fill="none" stroke="#188E80" stroke-width="2.4"/>
+          <text x="545" y="128" font-family="ui-monospace,monospace" font-size="12" fill="#188E80" font-weight="600">Arch 2 · free f</text>
+          <!-- morph glyphs along arch2 -->
+          <g font-family="ui-monospace,monospace" font-size="10" fill="#188E80" text-anchor="middle">
+            <text x="455" y="158">quad</text>
+            <text x="520" y="112">hexa · ducted</text>
+            <text x="620" y="96">hybrid / winged</text>
+          </g>
+          <!-- the breakthrough marker -->
+          <circle cx="410" cy="165" r="4" fill="#188E80"/>
+          <text x="410" y="188" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5" fill="var(--muted)">class exhausted → change f</text>
+        </svg>
+        <figcaption>Arch&nbsp;1 (amber) climbs within the quad class and saturates at the <b>class bound</b> — the 51% we measured. Arch&nbsp;2 (teal) treats the platform <b>f</b> as a variable, morphing the mechanism (more rotors, ducting, a lifting surface) so <b>y</b> is limited only by the <b>physics bound</b>. The choice is: optimize inside the class, or question the class.</figcaption>
+      </figure>
+    </div>
+
+    <div class="arch2col">
+      <div class="apanel one">
+        <h3>Architecture 1</h3>
+        <div class="sub">config → result · "which"</div>
+        <div class="formula">y = f(x),&nbsp; <span class="fix">f fixed</span>,&nbsp; max over x</div>
+        <ul>
+          <li><b>Starts</b> from a drone (a platform class).</li>
+          <li>Each model emits a <b>selection</b>: this prop, this motor, this pack.</li>
+          <li>Tunes continuous x + operating point (SPSA / analytic matching §5).</li>
+          <li><b>Answers</b>: "the best tune of <em>this</em> platform."</li>
+          <li><b>Ceiling</b>: the class bound — cannot exceed what the topology allows.</li>
+        </ul>
+        <p class="note" style="margin-bottom:0;">Built today. Reaches ~51% on real catalog parts; motor Kv is the binding wall.</p>
+      </div>
+
+      <div class="apanel two">
+        <h3>Architecture 2</h3>
+        <div class="sub">mission → config · "why"</div>
+        <div class="formula">y = f(x),&nbsp; <span class="free">f free</span> s.t. F(f)=invariants,&nbsp; max over (f, x)</div>
+        <ul>
+          <li><b>Starts</b> from the mission → solves inverse kinematics for the <b>required</b> primitives (v, a, τ, reach).</li>
+          <li>Each model emits a <b>principle</b>: not "a prop" but "momentum-conserving thrust; disk area &amp; count free."</li>
+          <li>Searches the space of <b>mechanisms f</b> admissible under the invariants F.</li>
+          <li><b>Answers</b>: "the <em>platform</em> the mission demands" — possibly a different class.</li>
+          <li><b>Ceiling</b>: the physics bound — <span style="color:var(--arch2)">y no longer bounded by the class of x.</span></li>
+        </ul>
+        <p class="note" style="margin-bottom:0;">The frontier. The hard part is parametrizing the mechanism space — see below.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:22px;">The open research question, stated plainly: <b>how much may f itself change, and how is that space searched?</b> The invariants F (conservation of momentum, energy, angular momentum; material limits) define the <em>admissible set</em> of mechanisms — a far larger space than "quads with different numbers." Arch&nbsp;2 is the move from optimizing a point in a fixed space to <b>optimizing over the space of physics-consistent maps</b>. That is where this stops being sizing and becomes generative design.</p>
+
+    <div class="status">
+      <span class="chip done">§1 models · specified</span>
+      <span class="chip done">§4 mission criteria · defined</span>
+      <span class="chip done">§5 analytic matching · defined</span>
+      <span class="chip now">next: implement fixed-point solve (§2)</span>
+      <span class="chip next">then: 6-DOF (§3)</span>
+      <span class="chip next">then: Arch 2 mechanism space</span>
+    </div>
+  </section>
+</div>

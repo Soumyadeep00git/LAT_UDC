@@ -1,0 +1,261 @@
+<title>Forge Pipeline</title>
+<style>
+  :root {
+    --paper:#F5F7F9; --panel:#FFFFFF; --panel-2:#EEF2F5;
+    --ink:#151C24; --muted:#5B6B7A; --faint:#8394A3;
+    --line:#D3DBE2;
+    --accent:#2C6E9B;        /* drafting blue — the coupling / library hue */
+    --naive:#B0742A;         /* naive optimization */
+    --lensed:#188E80;        /* physics-lensed */
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root:not([data-theme="light"]) { @media (prefers-color-scheme: dark) {
+    --paper:#0C1117; --panel:#131A22; --panel-2:#0F161D;
+    --ink:#E5EBF1; --muted:#93A2B1; --faint:#63717F; --line:#26313D;
+    --accent:#5EA6D4; --naive:#D6A15C; --lensed:#3FBAAC;
+  } }
+  :root[data-theme="dark"] {
+    --paper:#0C1117; --panel:#131A22; --panel-2:#0F161D;
+    --ink:#E5EBF1; --muted:#93A2B1; --faint:#63717F; --line:#26313D;
+    --accent:#5EA6D4; --naive:#D6A15C; --lensed:#3FBAAC;
+  }
+  * { box-sizing:border-box; }
+  body { background:var(--paper); color:var(--ink); font-family:var(--sans); line-height:1.62; margin:0; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1000px; margin:0 auto; padding:54px 26px 90px; }
+  h1,h2,h3 { text-wrap:balance; line-height:1.15; margin:0; }
+  .eyebrow { font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+  header { border-bottom:2px solid var(--ink); padding-bottom:28px; }
+  h1 { font-size:38px; font-weight:720; letter-spacing:-.02em; margin:12px 0 16px; }
+  .thesis { font-family:var(--mono); font-size:14.5px; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent); padding:15px 17px; border-radius:6px; line-height:1.7; }
+  .thesis b { color:var(--accent); font-weight:600; }
+  section { margin-top:56px; }
+  .sec-head { display:flex; align-items:baseline; gap:14px; border-bottom:1px solid var(--line); padding-bottom:11px; margin-bottom:22px; }
+  .sec-num { font-family:var(--mono); font-size:13px; color:var(--faint); font-weight:600; }
+  h2 { font-size:22px; font-weight:680; letter-spacing:-.01em; }
+  p { margin:0 0 14px; max-width:70ch; }
+  .lead { color:var(--muted); }
+  code, .m { font-family:var(--mono); }
+  .m { font-size:.92em; background:var(--panel-2); padding:1px 6px; border-radius:4px; border:1px solid var(--line); }
+  .fig-wrap { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:22px; overflow-x:auto; }
+  figure { margin:0; }
+  figure svg { display:block; width:100%; height:auto; color:var(--ink); }
+  figcaption { font-size:13px; color:var(--muted); margin-top:13px; max-width:76ch; }
+  .tbl-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:8px; }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-family:var(--mono); font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--faint); font-weight:600; background:var(--panel-2); }
+  tr:last-child td { border-bottom:none; }
+  td .s { font-family:var(--mono); color:var(--accent); font-weight:600; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px 18px; }
+  .card.n { border-top:3px solid var(--naive); } .card.l { border-top:3px solid var(--lensed); }
+  .card h3 { font-size:15px; font-weight:660; margin-bottom:6px; } .card.n h3 { color:var(--naive); } .card.l h3 { color:var(--lensed); }
+  .card p { font-size:13.5px; margin:0; }
+  .chips { display:flex; gap:9px; flex-wrap:wrap; margin-top:8px; }
+  .chip { font-family:var(--mono); font-size:11.5px; padding:4px 10px; border-radius:20px; border:1px solid var(--line); color:var(--muted); }
+  .chip.ok { color:#2F8F5B; border-color:color-mix(in srgb,#2F8F5B 45%,var(--line)); }
+  .note { font-size:13px; color:var(--muted); }
+  ol.scoped { font-size:13.5px; color:var(--muted); padding-left:20px; }
+  ol.scoped li { margin-bottom:6px; }
+  @media (max-width:720px){ .two{grid-template-columns:1fr;} h1{font-size:30px;} }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">forge · system design engine</div>
+    <h1>Forge Pipeline</h1>
+    <div class="thesis">
+      A <b>system</b> is a network of <b>subsystems</b>. The agent walks that graph: it <b>grounds</b> each
+      subsystem to real physics, sees which mechanism boundaries it may <b>cross</b>, <b>solves</b> the
+      couplings as one fixed point, and <b>optimizes</b> the whole thing to a mission — tuning parameters and
+      swapping mechanisms. Same machinery at every level of the recursion.
+    </div>
+  </header>
+
+  <!-- ============ THE PROCESS ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>The pipeline</h2></div>
+    <p class="lead">A mission and a system graph go in; a sized, buildable design comes out. The four agent
+      stages are the process; the physics library is the reference they consult; the optimize↔solve loop is
+      where the design actually moves.</p>
+    <div class="fig-wrap">
+      <figure>
+        <svg viewBox="0 0 920 300" role="img" aria-label="Pipeline: inputs (system graph + mission) flow through ground, scope, solve, optimize to a design; the physics library feeds ground and scope; optimize loops back to solve by re-tuning params or swapping mechanisms.">
+          <defs>
+            <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="currentColor"/></marker>
+            <marker id="al" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#188E80"/></marker>
+            <marker id="ab" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#2C6E9B"/></marker>
+          </defs>
+          <g font-family="ui-monospace,monospace" font-size="12.5" fill="currentColor">
+            <!-- inputs -->
+            <rect x="8" y="86" width="108" height="82" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="62" y="118" text-anchor="middle" font-size="11.5">system graph</text>
+            <line x1="20" y1="128" x2="104" y2="128" stroke="var(--line)" stroke-width="1"/>
+            <text x="62" y="150" text-anchor="middle" font-size="11.5">mission</text>
+            <!-- stages -->
+            <g>
+              <rect x="150" y="98" width="116" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <text x="208" y="124" text-anchor="middle" font-weight="600">GROUND</text>
+              <text x="208" y="142" text-anchor="middle" font-size="10.5" fill="var(--muted)">function → law</text>
+            </g>
+            <g>
+              <rect x="298" y="98" width="116" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <text x="356" y="124" text-anchor="middle" font-weight="600">SCOPE</text>
+              <text x="356" y="142" text-anchor="middle" font-size="10.5" fill="var(--muted)">radicality crossings</text>
+            </g>
+            <g>
+              <rect x="446" y="98" width="116" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.7"/>
+              <text x="504" y="124" text-anchor="middle" font-weight="600">SOLVE</text>
+              <text x="504" y="142" text-anchor="middle" font-size="10.5" fill="var(--muted)">coupled fixed point</text>
+            </g>
+            <g>
+              <rect x="594" y="98" width="116" height="60" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <text x="652" y="124" text-anchor="middle" font-weight="600">OPTIMIZE</text>
+              <text x="652" y="142" text-anchor="middle" font-size="10.5" fill="var(--muted)">params · mechanism</text>
+            </g>
+            <!-- output -->
+            <rect x="746" y="86" width="164" height="82" rx="7" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="828" y="116" text-anchor="middle" font-size="11.5">DESIGN</text>
+            <text x="828" y="134" text-anchor="middle" font-size="10.5" fill="var(--muted)">config + mechanisms</text>
+            <text x="828" y="150" text-anchor="middle" font-size="10.5" fill="var(--muted)">mass · a_max · v_max</text>
+            <!-- forward arrows -->
+            <line x1="116" y1="128" x2="148" y2="128" stroke="currentColor" stroke-width="1.4" marker-end="url(#a)"/>
+            <line x1="266" y1="128" x2="296" y2="128" stroke="currentColor" stroke-width="1.4" marker-end="url(#a)"/>
+            <line x1="414" y1="128" x2="444" y2="128" stroke="currentColor" stroke-width="1.4" marker-end="url(#a)"/>
+            <line x1="562" y1="128" x2="592" y2="128" stroke="currentColor" stroke-width="1.4" marker-end="url(#a)"/>
+            <line x1="710" y1="128" x2="744" y2="128" stroke="currentColor" stroke-width="1.4" marker-end="url(#a)"/>
+          </g>
+          <!-- physics library reference -->
+          <g font-family="ui-monospace,monospace" font-size="11.5">
+            <rect x="150" y="216" width="264" height="40" rx="6" fill="none" stroke="#2C6E9B" stroke-width="1.3"/>
+            <text x="282" y="240" text-anchor="middle" fill="#2C6E9B">physics library — 1069 nodes</text>
+            <path d="M208,216 L208,160" fill="none" stroke="#2C6E9B" stroke-width="1.2" stroke-dasharray="4 4" marker-end="url(#ab)"/>
+            <path d="M356,216 L356,160" fill="none" stroke="#2C6E9B" stroke-width="1.2" stroke-dasharray="4 4" marker-end="url(#ab)"/>
+          </g>
+          <!-- optimize -> solve loop -->
+          <g font-family="ui-monospace,monospace" font-size="11" fill="#188E80">
+            <path d="M652,158 L652,190 L504,190 L504,160" fill="none" stroke="#188E80" stroke-width="1.6" marker-end="url(#al)"/>
+            <text x="578" y="204" text-anchor="middle">re-solve: tune params / swap mechanism</text>
+          </g>
+          <text x="504" y="80" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="var(--faint)">≙ hi-fi solver (foundation gate)</text>
+        </svg>
+        <figcaption><b>Black</b> = the forward pass; <span style="color:var(--accent);font-weight:600">blue</span> = the
+          physics library feeding GROUND and SCOPE; <span style="color:var(--lensed);font-weight:600">teal</span> = the
+          optimize→solve loop where the design changes. SOLVE is the same coupled fixed point validated against the
+          hi-fi solver, so every candidate the optimizer scores is physically consistent.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ THE OBJECT ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>What it operates on: the system graph</h2></div>
+    <p class="lead">The pipeline's input isn't a parameter vector — it's a graph. Subsystems are nodes; the
+      quantities they pass are the edges, and the edges <em>are</em> the physical couplings. A subsystem can
+      decompose into children (recursion), and the solver treats the nesting transparently.</p>
+    <div class="fig-wrap">
+      <figure>
+        <svg viewBox="0 0 840 300" role="img" aria-label="System graph: energy, propulsion, structure (containing arm and frame), payload; energy feeds propulsion voltage and current-limit, propulsion feeds energy current back (sag cycle), propulsion feeds structure thrust; total mass sets the capability envelope.">
+          <defs><marker id="a2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="currentColor"/></marker>
+            <marker id="a2b" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#2C6E9B"/></marker></defs>
+          <g font-family="ui-monospace,monospace" font-size="12">
+            <!-- energy -->
+            <rect x="24" y="70" width="158" height="56" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="103" y="94" text-anchor="middle" font-weight="600">energy</text>
+            <text x="103" y="112" text-anchor="middle" font-size="10" fill="var(--muted)">→ pack_energy</text>
+            <!-- propulsion -->
+            <rect x="300" y="70" width="170" height="56" rx="7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="385" y="94" text-anchor="middle" font-weight="600">propulsion</text>
+            <text x="385" y="112" text-anchor="middle" font-size="10" fill="var(--muted)">→ rotor_thrust (rotor|ducted)</text>
+            <!-- structure with children -->
+            <rect x="590" y="40" width="224" height="150" rx="8" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <text x="702" y="60" text-anchor="middle" font-weight="600">structure → load_bearing</text>
+            <rect x="612" y="74" width="180" height="42" rx="6" fill="none" stroke="currentColor" stroke-width="1.1"/>
+            <text x="702" y="92" text-anchor="middle" font-size="11">arm</text>
+            <text x="702" y="108" text-anchor="middle" font-size="9.5" fill="var(--muted)">→ beam_bending_stress</text>
+            <rect x="612" y="126" width="180" height="42" rx="6" fill="none" stroke="currentColor" stroke-width="1.1"/>
+            <text x="702" y="144" text-anchor="middle" font-size="11">frame</text>
+            <text x="702" y="160" text-anchor="middle" font-size="9.5" fill="var(--muted)">→ normal_stress</text>
+            <!-- payload -->
+            <rect x="300" y="176" width="170" height="42" rx="7" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3"/>
+            <text x="385" y="202" text-anchor="middle" font-size="11" fill="var(--muted)">payload (non-physics mass)</text>
+          </g>
+          <!-- edges -->
+          <g font-family="ui-monospace,monospace" font-size="10.5">
+            <line x1="182" y1="88" x2="298" y2="88" stroke="currentColor" stroke-width="1.4" marker-end="url(#a2)"/>
+            <text x="240" y="80" text-anchor="middle" fill="currentColor">V, i_burst</text>
+            <path d="M300,110 L182,110" fill="none" stroke="#2C6E9B" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#a2b)"/>
+            <text x="240" y="124" text-anchor="middle" fill="#2C6E9B">current (sag cycle)</text>
+            <line x1="470" y1="98" x2="588" y2="98" stroke="currentColor" stroke-width="1.4" marker-end="url(#a2)"/>
+            <text x="529" y="90" text-anchor="middle" fill="currentColor">thrust</text>
+          </g>
+          <!-- capability envelope -->
+          <g font-family="ui-monospace,monospace" font-size="10.5" fill="var(--muted)">
+            <text x="24" y="212">Σ mass → total_mass → TWR → a_max, v_max  (capability envelope)</text>
+          </g>
+        </svg>
+        <figcaption>Edges carry physical quantities, not control flow. The <span style="color:var(--accent);font-weight:600">blue</span>
+          back-edge is the battery-sag cycle (current pulls voltage down), which the solver resolves as part of the
+          fixed point. <b>structure</b> is itself a system of <b>arm</b> + <b>frame</b> — the recursion — and each child grounds to its own law.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ STAGES ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>What each stage does</h2></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>stage</th><th>does</th><th>discipline</th></tr></thead>
+        <tbody>
+          <tr><td><span class="s">GROUND</span></td><td>binds each subsystem's function to a physics-library node (+ its descent to fundamentals)</td><td>context-aware, exact-match — the subsystem declares its physics variables, so <span class="m">thrust</span> binds to the rotor law, not the jet</td></tr>
+          <tr><td><span class="s">SCOPE</span></td><td>lists the mechanism crossings radicality permits within a budget (rotor→ducted-fan d=1, →jet d=3…)</td><td>radicality = graph distance; a budget caps how far a design may cross</td></tr>
+          <tr><td><span class="s">SOLVE</span></td><td>resolves the couplings to a consistent state over a shared bus; reads off mass, a_max, v_max</td><td>one fixed point; reproduces the hi-fi solver (the foundation gate)</td></tr>
+          <tr><td><span class="s">OPTIMIZE</span></td><td>drives the system to the mission — tuning params and swapping mechanisms, re-solving each candidate</td><td>naive + physics-lensed (below)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ TWO MODES ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>Two ways it optimizes</h2></div>
+    <div class="two">
+      <div class="card n">
+        <h3>Naive — tune parameters</h3>
+        <p>Hill-climb the design knobs (prop diameter, Kv, cells, arm length…) through the coupled solve toward
+          the mission. Stays inside the current mechanism.</p>
+      </div>
+      <div class="card l">
+        <h3>Physics-lensed — swap mechanisms</h3>
+        <p>Try each alternative mechanism a subsystem could use, but only those within the radicality budget
+          (rotor ↔ ducted-fan), re-solve, and keep the best. The design can change <em>kind</em>, not just size.</p>
+      </div>
+    </div>
+    <p class="note" style="margin-top:14px;">On the last run the agent tried both propulsion mechanisms and kept the
+      <b>rotor</b> (2.09 kg) over the ducted fan (2.35 kg): both met the mission, but the duct's shroud mass beat its
+      thrust gain <em>for that mission</em>. Raise the speed requirement and it flips — the choice is made on physics.</p>
+  </section>
+
+  <!-- ============ STATE ============ -->
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>What holds, and what's scoped</h2></div>
+    <div class="chips">
+      <span class="chip ok">foundation gate: PASS</span>
+      <span class="chip ok">sanity: 20 / 20</span>
+      <span class="chip ok">0 dangling · 0 orphans</span>
+      <span class="chip ok">recursion validated</span>
+      <span class="chip ok">every mechanism node verified</span>
+    </div>
+    <p style="margin-top:16px;">The engine is complete and tested: the explicit graph reproduces the hi-fi solver,
+      every subsystem grounds to a real law, the recursion aggregates correctly, and the physics-lensed swap picks the
+      right mechanism. What remains is a tracked, integrity-guaranteed backlog — not loose ends:</p>
+    <ol class="scoped">
+      <li><b>Broad library vocabulary canon</b> — 30 independent agents named things ~15 ways for "thrust"; the engine handles it with a small function→quantity canon + context, but a full canonical pass is the production curation step.</li>
+      <li><b>22 physics-content corrections</b> flagged by the library's verify pass — a curation queue; structural integrity is guaranteed regardless.</li>
+      <li><b>Engagement objective</b> — swap the capability floor (a_max/v_max ≥ target) for win-rate against a threat set, reconnecting to the interceptor mission.</li>
+      <li><b>More subsystems / mechanisms</b> — a wing (fixed-wing crossing), a fuel-cell energy mechanism, motor↔ESC↔rotor decomposition — each a new node on the same spine.</li>
+    </ol>
+  </section>
+</div>

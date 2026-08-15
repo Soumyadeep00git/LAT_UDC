@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Generated design artifacts (all reproducible via the generators)
+build_specimen/
+of_flow_case/
+of_cavity_case/
+*.step
+*.stl
+*.msh
+*.apj
+cfd_case_flow.json
+
+# Solver scratch / logs
+**/log.*
+**/postProcessing/
+**/polyMesh/
+
+# Rendered screenshots / plots
+specimenlab_*.png
+*.png
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
