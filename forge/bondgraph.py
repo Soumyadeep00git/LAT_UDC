@@ -78,7 +78,8 @@ def infer_system(parts, cfg):
 
     # 4) params per subsystem (from cfg + inferred counts)
     P = {
-        "energy":     {"S": cfg["S"], "cap_mAh": cfg["cap_mAh"], "C_rate": cfg["C_rate"], "n_rotors": n_rotors},
+        "energy":     {"S": cfg["S"], "cap_mAh": cfg["cap_mAh"], "C_rate": cfg["C_rate"], "n_rotors": n_rotors,
+                       "wh_per_kg": cfg.get("wh_per_kg", 400.0)},
         "propulsion": {"D_in": cfg["D_in"], "pitch_in": cfg["pitch_in"], "Kv": cfg["Kv"],
                        "I_max": cfg["I_max"], "S": cfg["S"], "n_rotors": n_rotors},
         "arm":        {"L_arm": cfg["L_arm"], "n_rotors": n_rotors},

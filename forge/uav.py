@@ -31,7 +31,8 @@ _TABLE_CACHE = {}           # (D,pitch,blades,Kv,S) -> PropTable, reused across 
 
 # ----------------------------------------------------------------- subsystem models
 def energy_model(params, inp):
-    b = Battery(params["S"], params["cap_mAh"], params["C_rate"])
+    b = Battery(params["S"], params["cap_mAh"], params["C_rate"],
+                wh_per_kg=params.get("wh_per_kg", 400.0))     # specific_energy = a material design DOF
     current = inp.get("current") or 0.0
     return {"bus_voltage": b.v_bus(current), "usable_energy": b.usable_J,
             "i_burst_per_rotor": b.I_burst / params["n_rotors"], "mass": b.mass}
@@ -97,7 +98,8 @@ def build_uav(cfg, propulsion_mechanism="rotor"):
     n = cfg.get("n_rotors", 4)
     energy = Subsystem("energy", "stored_energy", requires=["current"],
                        provides=["bus_voltage", "usable_energy", "i_burst_per_rotor"],
-                       params={"S": cfg["S"], "cap_mAh": cfg["cap_mAh"], "C_rate": cfg["C_rate"], "n_rotors": n},
+                       params={"S": cfg["S"], "cap_mAh": cfg["cap_mAh"], "C_rate": cfg["C_rate"], "n_rotors": n,
+                               "wh_per_kg": cfg.get("wh_per_kg", 400.0)},
                        mechanisms={"battery": (energy_model, "electrochemistry_batteries.pack_energy")},
                        mechanism="battery", radicality_budget=0, owns=["endurance"],
                        physics_vars=["specific_energy", "pack_mass", "usable_capacity_fraction"])
