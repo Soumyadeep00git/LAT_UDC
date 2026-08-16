@@ -49,11 +49,32 @@ sel = res["selected"]
 print(f"  SEE ascend to invariant: {inv}")
 print(f"  IMAGINE: realizable {realizable}  |  FRONTIER (imagined, no model) {frontier}")
 if sel:
-    line(f"V3 result ({sel['mechanism']})",
+    line(f"V3a compositional ({sel['mechanism']})",
          {"a_max_g": sel["a_max_g"], "v_max": sel["v_max"], "endurance_min": sel["endurance_min"], "mass": sel["mass"]},
-         "-> MET")
+         "-> MET  (selects an existing embodiment -> == V2)")
 else:
-    print("  V3 result: no realizable embodiment met the drive")
+    print("  V3a compositional: no realizable embodiment met the drive")
+
+# --- the V3 work AFTER the old loop: generative reshape, meta-requirements, decoupling ---
+print("\nV3b — GENERATIVE (reshape the field -> a NEW embodiment: the ducted ring):")
+import ducted_ring
+from uav import build_uav, capabilities
+from solve import solve
+sysb = build_uav(best["cfg"]); capb = capabilities(sysb, solve(sysb, seed={"current": 0.0, "total_mass": 4.0}))
+ring = ducted_ring.ducted_ring_caps(best["cfg"], capb["thrust"], capb["v_max"])
+line("V3b ducted ring", ring, "-> MET  *** UNVALIDATED (deficit model) ***")
+
+print("\nV3c — META-REQUIREMENT (over-constrained field -> prescribe a missing DOF):")
+import v3_meta
+mr = v3_meta.meta_requirement(dict(n_pixels=1920, focal_length_mm=38.0, pixel_pitch_um=3.0, frame_rate_hz=60.0),
+                              {"detect_range_m": 2500.0, "search_halfangle_deg": 30.0, "max_revisit_s": 1.5})
+print(f"  seeker over-constrained -> {mr.get('meta_requirement', mr.get('note'))}"
+      + (f"  (revisit {mr['revisit_s']}s; hardware: {mr['hardware']})" if not mr['static_feasible'] else ""))
+
+print("\nV3d — DECOUPLING (derive the law FORM from units, no library):")
+import dimanalysis
+form, _ = dimanalysis.derive("thrust", ["density", "diameter", "angular_speed"])
+print(f"  {form}   (library only needed for the constant C)")
 
 print("\n" + "=" * 70)
 print("VERDICT")
