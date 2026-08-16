@@ -93,6 +93,31 @@ def payload_model(params, inp):
     return {"mass": params.get("mass", 0.6)}
 
 
+SEEKER_TARGET_M = 0.35          # characteristic size of a small-UAS threat (for the detection law)
+
+
+def seeker_model(params, inp):
+    """EO/IR camera seeker. Real optics: IFOV = pixel_pitch/focal_length; detection range by the Johnson
+    criterion R = target_size/(N_px * IFOV); FOV = n_pixels * IFOV. Mass grows with the lens; it draws
+    power that eats into endurance. Its OUTPUT (detection_range/FOV/track_rate) is what the mission sees
+    instead of an omniscient enemy position."""
+    f = params["focal_length_mm"] / 1000.0
+    pp = params["pixel_pitch_um"] * 1e-6
+    npx = params["n_pixels"]
+    ifov = pp / f if f > 0 else 1e-3                       # rad / pixel
+    fov = npx * ifov                                       # rad across the array
+    n_det = params.get("pixels_for_detection", 2.0)        # Johnson detection criterion
+    r_det = SEEKER_TARGET_M / (n_det * ifov) if ifov > 0 else 0.0
+    return {"detection_range": r_det, "field_of_view_deg": math.degrees(fov),
+            "track_rate_hz": params.get("frame_rate_hz", 30.0),
+            "seeker_power_W": 3.0 + 0.0008 * npx,
+            "mass": 0.04 + 0.0025 * params["focal_length_mm"]}
+
+
+# n_pixels = LINEAR pixel count across the array (e.g. 1920 wide), so FOV = n_pixels * IFOV
+SEEKER_DEFAULTS = dict(focal_length_mm=25.0, pixel_pitch_um=3.0, n_pixels=1920, frame_rate_hz=60.0)
+
+
 # ----------------------------------------------------------------- build the system graph
 def build_uav(cfg, propulsion_mechanism="rotor"):
     n = cfg.get("n_rotors", 4)
@@ -123,7 +148,13 @@ def build_uav(cfg, propulsion_mechanism="rotor"):
     struct = Subsystem("structure", "stress", requires=["thrust"], children=[arm, frame])
     payload = Subsystem("payload", "mass", params={"mass": cfg.get("payload", 0.6)},
                         mechanisms={"fixed": (payload_model, None)}, mechanism="fixed")
-    return System("UAV", [energy, propulsion, struct, payload])
+    seeker = Subsystem("seeker", "detection_range",
+                       provides=["detection_range", "field_of_view_deg", "track_rate_hz", "seeker_power_W"],
+                       params={k: cfg.get(k, v) for k, v in SEEKER_DEFAULTS.items()},
+                       mechanisms={"eo_camera": (seeker_model, "electro_optics.detection_range")},
+                       mechanism="eo_camera", radicality_budget=1, owns=["detection"],
+                       physics_vars=["angular_resolution", "target_size", "field_of_view"])
+    return System("UAV", [energy, propulsion, struct, payload, seeker])
 
 
 # ----------------------------------------------------------------- system-level capability envelope
@@ -157,7 +188,12 @@ def capabilities(system, bus):
     # endurance: usable battery energy / momentum-theory hover power
     A_total = n * math.pi * (prop.params["D_in"] * IN2M / 2.0) ** 2
     P_hover = (mass * G) ** 1.5 / (FM_HOVER * math.sqrt(2 * RHO_AIR * A_total)) if A_total > 0 else 1e9
-    endurance = bus.get("usable_energy", 0.0) / P_hover if P_hover > 0 else 0.0
+    seeker = system.by_name().get("seeker")
+    P_seeker = seeker.state.get("seeker_power_W", 0.0) if seeker else 0.0
+    endurance = bus.get("usable_energy", 0.0) / (P_hover + P_seeker) if (P_hover + P_seeker) > 0 else 0.0
     struct_mass = system.by_name()["structure"].state.get("mass", 0.0)
     return {"mass": mass, "TWR": twr, "a_max": a_max, "v_max": v_max, "thrust": thrust,
-            "endurance": endurance, "struct_mass": struct_mass}
+            "endurance": endurance, "struct_mass": struct_mass,
+            "detection_range": seeker.state.get("detection_range", 0.0) if seeker else 0.0,
+            "seeker_fov_deg": seeker.state.get("field_of_view_deg", 0.0) if seeker else 0.0,
+            "track_rate_hz": seeker.state.get("track_rate_hz", 0.0) if seeker else 0.0}

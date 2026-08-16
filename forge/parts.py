@@ -59,7 +59,10 @@ def quad_parts(cfg):
                           pos=(ex/2, ey/2, 0.0)))
     parts.append(Part("frame", "frame", [Port(MECH, "in", ["thrust"])], pos=(0.0, 0.0, 0.0)))
     parts.append(Part("pixhawk", "avionics", [Port(ELEC, "in", ["bus_voltage"])], pos=(0.0, 0.0, 0.03)))
-    parts.append(Part("seeker", "payload", [], pos=(0.12, 0.0, -0.05)))
+    parts.append(Part("seeker", "sensor",
+                      [Port(ELEC, "in", ["bus_voltage"]),
+                       Port("optical", "out", ["detection_range", "field_of_view_deg", "track_rate_hz"])],
+                      pos=(0.12, 0.0, -0.05)))
     parts.append(Part("air", "environment", [Port(FLUID, "in", ["slipstream"])], pos=None))
     return parts
 

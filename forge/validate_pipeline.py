@@ -49,36 +49,59 @@ KEEPOUT = 500.0     # m, asset defense radius
 
 
 def intercept_score(caps):
-    """Physics-based interception feasibility per threat. Returns (hits, continuous_score, margins).
-    A threat is intercepted if speed, acceleration, reach, and endurance margins are all >= 0.
-    The continuous score (sum of sigmoids of the worst margin) gives the optimizer gradient even on misses."""
+    """Physics-based interception feasibility per threat, now GATED BY THE SEEKER — the enemy position is
+    the seeker's output, not a gift. A threat is intercepted only if the KINEMATIC margins (speed, accel,
+    reach, endurance) AND the SENSING margins (detect it early enough, wide-enough FOV, fast-enough track)
+    are all >= 0. Continuous score (sum of sigmoids of the worst margin) gives the optimizer gradient."""
     v, a, e = caps["v_max"], caps["a_max_g"], caps["endurance_min"]
+    R_det = caps.get("detection_range", 0.0)
+    fov = caps.get("seeker_fov_deg", 0.0)
+    trk = caps.get("track_rate_hz", 0.0)
     hits, score, margins = 0, 0.0, []
     for _name, R_km, vt, cross in SCENARIOS:
         R = R_km * 1000.0
-        t_avail = max((R - KEEPOUT) / vt, 1e-3)                 # s until threat reaches the keep-out
+        t_avail = max((R - KEEPOUT) / vt, 1e-3)
         need = R - KEEPOUT
-        m_reach = (v * t_avail - need) / max(need, 1.0)          # can it cover the gap in time?
-        m_speed = (v - vt * (1.0 + 0.3 * cross)) / max(vt, 1.0)  # speed advantage (more vs crossers)
-        a_req = 2.0 + 4.0 * cross + vt / 22.0                    # crossing/fast targets need more g
+        t_flight = need / max(v, 1.0)
+        # kinematics
+        m_reach = (v * t_avail - need) / max(need, 1.0)
+        m_speed = (v - vt * (1.0 + 0.3 * cross)) / max(vt, 1.0)
+        a_req = 2.0 + 4.0 * cross + vt / 22.0
         m_accel = (a - a_req) / max(a_req, 1.0)
-        m_endur = (e - (t_avail / 60.0 + 2.0)) / 5.0             # must be on-station long enough
-        m = min(m_speed, m_accel, m_reach, m_endur)
+        m_endur = (e - (t_avail / 60.0 + 2.0)) / 5.0
+        # sensing (the seeker must EARN the enemy position)
+        r_need_det = KEEPOUT + vt * t_flight                     # must be seen early enough to reach it
+        m_detect = (R_det - r_need_det) / max(r_need_det, 1.0)
+        req_fov = 5.0 + 30.0 * cross                             # crossers need a wider field of view
+        m_fov = (fov - req_fov) / req_fov
+        req_trk = 20.0 + 3.0 * vt * cross                        # fast crossers need faster track updates
+        m_track = (trk - req_trk) / max(req_trk, 1.0)
+        m = min(m_speed, m_accel, m_reach, m_endur, m_detect, m_fov, m_track)
         margins.append(m)
         if m >= 0:
             hits += 1
-        score += 1.0 / (1.0 + math.exp(-4.0 * m))               # smooth credit -> gradient
+        score += 1.0 / (1.0 + math.exp(-4.0 * m))
     return hits, score, margins
 
 
 def _caps(cfg):
-    return diagnose.caps_of(cfg)
+    sysm = build_uav(cfg)
+    c = capabilities(sysm, solve(sysm, seed=dict(SEED)))
+    return {"a_max_g": c["a_max"] / G, "v_max": c["v_max"], "endurance_min": c["endurance"] / 60.0,
+            "mass": c["mass"], "TWR": c["TWR"], "thrust": c["thrust"],
+            "detection_range": c["detection_range"], "seeker_fov_deg": c["seeker_fov_deg"],
+            "track_rate_hz": c["track_rate_hz"]}
 
 
 def maximize(cfg0, iters=16):
     """V1: coordinate hill-climb of the design (incl. chemistry) to MAXIMIZE the continuous intercept score."""
-    keys = ["D_in", "pitch_in", "Kv", "I_max", "S", "cap_mAh", "L_arm", "wh_per_kg"]
-    bounds = dict(diagnose.BOUNDS); bounds["wh_per_kg"] = (200, 450)
+    keys = ["D_in", "pitch_in", "Kv", "I_max", "S", "cap_mAh", "L_arm", "wh_per_kg",
+            "focal_length_mm", "n_pixels", "frame_rate_hz"]      # incl. the seeker design DOFs
+    bounds = dict(diagnose.BOUNDS)
+    bounds["wh_per_kg"] = (200, 450)
+    bounds["focal_length_mm"] = (8, 120)     # long lens: farther detection, narrower FOV (the optics tradeoff)
+    bounds["n_pixels"] = (640, 4096)         # more pixels: wider FOV at a given focal length
+    bounds["frame_rate_hz"] = (20, 240)      # faster track for crossing threats
     cfg = dict(cfg0)
     cfg.setdefault("wh_per_kg", 300.0)
     best = intercept_score(_caps(cfg))[1]
@@ -113,7 +136,8 @@ def main(do_cfd=False):
           f"{max(s[1] for s in SCENARIOS)} km); asset keep-out {KEEPOUT:.0f} m.  Score = intercept hits.")
 
     cfg0 = dict(D_in=15, pitch_in=8, Kv=340, I_max=45, S=6, cap_mAh=8000,
-                C_rate=25, L_arm=0.33, payload=0.6, n_rotors=4, wh_per_kg=300.0)
+                C_rate=25, L_arm=0.33, payload=0.6, n_rotors=4, wh_per_kg=300.0,
+                focal_length_mm=25.0, pixel_pitch_um=3.0, n_pixels=1920, frame_rate_hz=60.0)
 
     banner("2. ENCODE — hardware -> system -> physics -> objective")
     system, meta = bondgraph.infer_system(P.quad_parts(cfg0), cfg0)
@@ -121,9 +145,12 @@ def main(do_cfd=False):
           f"{[s.name for s in system.subsystems]}")
     for b in bondgraph.describe_bonds(meta)[:4]:
         print("    bond: " + b)
+    print(f"  seeker: EO/IR camera (node electro_optics.detection_range) — enemy position is now its OUTPUT")
     cb = _caps(cfg0); h0, s0, _ = intercept_score(cb)
     print(f"  baseline caps: a_max {cb['a_max_g']:.2f} g | v_max {cb['v_max']:.1f} m/s | "
-          f"endurance {cb['endurance_min']:.0f} min  ->  HITS {h0}/{len(SCENARIOS)}")
+          f"endurance {cb['endurance_min']:.0f} min")
+    print(f"                 seeker: detect {cb['detection_range']:.0f} m | FOV {cb['seeker_fov_deg']:.1f} deg | "
+          f"track {cb['track_rate_hz']:.0f} Hz  ->  HITS {h0}/{len(SCENARIOS)}")
 
     banner("3. OPTIMIZE — maximize intercept hits (V1 then V2)")
     # V1: tune the design (params + chemistry) at the inferred 4-rotor form
@@ -192,6 +219,8 @@ def main(do_cfd=False):
     print(f"  design  : " + ", ".join(f"{k}={cfg_win[k]:.0f}" if k not in ('L_arm',) else f"{k}={cfg_win[k]:.2f}"
                                        for k in ['D_in', 'pitch_in', 'Kv', 'I_max', 'S', 'cap_mAh', 'L_arm', 'wh_per_kg']))
     print(f"  caps    : a_max {caps_win['a_max_g']:.2f} g | v_max {caps_win['v_max']:.1f} m/s | endurance {caps_win['endurance_min']:.0f} min")
+    print(f"  seeker  : detect {caps_win['detection_range']:.0f} m | FOV {caps_win['seeker_fov_deg']:.1f} deg | track {caps_win['track_rate_hz']:.0f} Hz  "
+          f"(focal {cfg_win.get('focal_length_mm', 25):.0f} mm, {cfg_win.get('n_pixels', 1920):.0f} px)")
     print(f"  SCORE   : MAX INTERCEPT HITS = {hits_win} / {len(SCENARIOS)}   (baseline {h0})")
     print(f"  package : build_interceptor/  (STL, FEA, ArduPilot{' , CFD' if cfd and cfd.get('ok') else ''})")
     print(f"  PIPELINE VALIDATION: {'PASS' if allok else 'FAIL'}")

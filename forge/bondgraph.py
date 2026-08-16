@@ -20,7 +20,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "physics"))
 
-from uav import (energy_model, propulsion_model, arm_model, frame_model, payload_model, IN2M)  # noqa: E402
+from uav import (energy_model, propulsion_model, arm_model, frame_model, payload_model,          # noqa: E402
+                 seeker_model, SEEKER_DEFAULTS, IN2M)
 from system import Subsystem, System                                                            # noqa: E402
 
 # role -> how that role realises as a subsystem (which model, which library law, which domain)
@@ -37,6 +38,8 @@ ROLE = {
                       node=None,                                     domain="mass"),
     "avionics":  dict(sub="payload",    func="mass",           model=payload_model,
                       node=None,                                     domain="mass"),
+    "sensor":    dict(sub="seeker",     func="detection_range", model=seeker_model,
+                      node="electro_optics.detection_range",         domain="electro-optical", owns=["detection"]),
     "environment": None,   # a sink (the air), not a subsystem
 }
 
@@ -85,6 +88,7 @@ def infer_system(parts, cfg):
         "arm":        {"L_arm": cfg["L_arm"], "n_rotors": n_rotors},
         "frame":      {"n_rotors": n_rotors},
         "payload":    {"mass": cfg.get("payload", 0.6)},
+        "seeker":     {k: cfg.get(k, v) for k, v in SEEKER_DEFAULTS.items()},
     }
 
     def mk(sub):
@@ -100,11 +104,12 @@ def infer_system(parts, cfg):
     frame = mk("frame")
     structure = Subsystem("structure", "stress", requires=["thrust"], children=[arm, frame])
     payload = mk("payload")
-    system = System("UAV", [energy, propulsion, structure, payload])
+    seeker = mk("seeker")
+    system = System("UAV", [energy, propulsion, structure, payload, seeker])
 
     meta = {"n_rotors": n_rotors, "bonds": bonds,
             "roles": {s.name: dict(role_for(s.name), domain=domain_for(s.name)) for s in
-                      [energy, propulsion, arm, frame, payload]},
+                      [energy, propulsion, arm, frame, payload, seeker]},
             "parts": parts, "cfg": cfg}
     return system, meta
 

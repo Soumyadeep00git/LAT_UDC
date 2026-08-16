@@ -12,6 +12,26 @@ PATCH = {
         provenance="derived", level="low", domain="circuit_theory",
         requires={"inductance": 1, "current": 1},
         points_to=["electromagnetism.magnetic_energy_density", "circuit_theory.inductance"]),
+
+    # --- EO/IR seeker (added when the seeker subsystem was introduced) ---
+    "optics.angular_resolution": dict(
+        quantity="angular_resolution",
+        law="IFOV = pixel_pitch / focal_length — instantaneous field of view per pixel",
+        provenance="derived", level="mid", domain="electro_optics",
+        requires={"pixel_pitch": 1, "focal_length": -1},
+        points_to=[]),
+    "electro_optics.detection_range": dict(
+        quantity="detection_range",
+        law="R_det = target_size / (N_pixels_detect * IFOV) — Johnson detection criterion",
+        provenance="empirical", level="high", domain="electro_optics",
+        requires={"target_size": 1, "angular_resolution": -1, "pixels_for_detection": -1},
+        points_to=["optics.angular_resolution"]),
+    "electro_optics.field_of_view": dict(
+        quantity="field_of_view",
+        law="FOV = n_pixels * IFOV — angular coverage of the detector array",
+        provenance="derived", level="mid", domain="electro_optics",
+        requires={"n_pixels": 1, "angular_resolution": 1},
+        points_to=["optics.angular_resolution"]),
 }
 
 # CURATED SYNONYMS: natural engineering function-names -> the library's canonical quantity. Build-time,
