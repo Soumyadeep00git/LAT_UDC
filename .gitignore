@@ -7,6 +7,7 @@ venv/
 
 # Generated design artifacts (all reproducible via the generators)
 build_specimen/
+build_interceptor/
 of_flow_case/
 of_cavity_case/
 *.step
