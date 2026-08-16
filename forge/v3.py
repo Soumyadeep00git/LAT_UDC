@@ -38,6 +38,30 @@ HOME_NODE = "rotorcraft_bemt.rotor_thrust"
 FUNCTION = "thrust"
 
 
+_REQMAP = (("a_max_g", "a_req"), ("v_max", "v_req"), ("endurance_min", "endur_req"))
+
+
+def _better(a, b):
+    if a["met"] != b["met"]:
+        return a["met"]
+    return a["caps"]["mass"] < b["caps"]["mass"] if a["met"] else a["margin"] > b["margin"]
+
+
+def _v2(cfg, mission, mech, counts=(3, 4, 6, 8)):
+    """V2 for a given embodiment: count rearrangement ON TOP OF V1 param tuning. So V3's ACT (which calls
+    this) is a proper superset of V2 — it does everything V2 does, for each imagined embodiment."""
+    best = None
+    for n in counts:
+        tuned = diagnose.repair(dict(cfg, n_rotors=n), mission, mechanism=mech)[0]
+        caps = diagnose.caps_of(tuned, mech)
+        met = all(caps[m] >= mission[r] - 1e-6 for m, r in _REQMAP)
+        margin = min((caps[m] - mission[r]) / max(abs(mission[r]), 1e-9) for m, r in _REQMAP)
+        cand = {"n": n, "cfg": tuned, "caps": caps, "met": met, "margin": margin}
+        if best is None or _better(cand, best):
+            best = cand
+    return best
+
+
 def _alternatives(radius):
     try:
         alts = radicality.alternatives(FUNCTION, HOME_NODE, radius)
@@ -78,17 +102,17 @@ def v3(cfg, mission, memory, budget=3, cycle=0):
     # always include HOME as the incumbent embodiment to compare against
     imagined.insert(0, {"node": HOME_NODE, "dist": 0, "realizable": True})
 
-    # ---- ACT: realize each realizable candidate through V2/V1, let the physical judge ----
+    # ---- ACT: realize each realizable candidate through the FULL V2 (count+params), physical judges ----
     acted = []
     for im in imagined:
         if im["realizable"]:
             mech = REALIZE[im["node"]]
-            cfg2, met, ex, hist, info = diagnose.repair(cfg, mission, mechanism=mech)
-            caps = diagnose.caps_of(cfg2, mech)
-            acted.append({"node": im["node"], "mechanism": mech, "met": bool(met),
+            b = _v2(cfg, mission, mech)                          # V3 ACT nests V2 (which nests V1)
+            caps = b["caps"]
+            acted.append({"node": im["node"], "mechanism": mech, "n": b["n"], "met": bool(b["met"]),
                           "mass": round(caps["mass"], 3), "a_max_g": round(caps["a_max_g"], 2),
                           "v_max": round(caps["v_max"], 1), "endurance_min": round(caps["endurance_min"], 1),
-                          "_cfg": cfg2})
+                          "_cfg": b["cfg"]})
         else:
             acted.append({"node": im["node"], "realizable": False,
                           "note": "imagined — no executable model (invention frontier)"})
