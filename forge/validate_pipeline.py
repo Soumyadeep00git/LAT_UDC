@@ -76,7 +76,10 @@ def intercept_score(caps):
         m_fov = (fov - req_fov) / req_fov
         req_trk = 20.0 + 3.0 * vt * cross                        # fast crossers need faster track updates
         m_track = (trk - req_trk) / max(req_trk, 1.0)
-        m = min(m_speed, m_accel, m_reach, m_endur, m_detect, m_fov, m_track)
+        alpha = caps.get("turn_alpha", 1e6)                      # angular agility: control torque / inertia
+        req_alpha = 8.0 + 25.0 * cross * (vt / 30.0)            # crossers need to slew onto the target
+        m_turn = (alpha - req_alpha) / req_alpha
+        m = min(m_speed, m_accel, m_reach, m_endur, m_detect, m_fov, m_track, m_turn)
         margins.append(m)
         if m >= 0:
             hits += 1
@@ -87,10 +90,24 @@ def intercept_score(caps):
 def _caps(cfg):
     sysm = build_uav(cfg)
     c = capabilities(sysm, solve(sysm, seed=dict(SEED)))
+    # angular agility (well-defined physics: control torque / inertia) — a factor beyond linear thrust.
+    L = cfg["L_arm"]
+    I_roll = 0.30 * c["mass"] * L ** 2                      # inertia estimate (motors/arms at radius L)
+    M_ctrl = 0.5 * c["thrust"] * L                          # differential-thrust control torque
+    turn_alpha = M_ctrl / max(I_roll, 1e-6)                 # rad/s^2 angular authority
     return {"a_max_g": c["a_max"] / G, "v_max": c["v_max"], "endurance_min": c["endurance"] / 60.0,
-            "mass": c["mass"], "TWR": c["TWR"], "thrust": c["thrust"],
+            "mass": c["mass"], "TWR": c["TWR"], "thrust": c["thrust"], "turn_alpha": turn_alpha,
             "detection_range": c["detection_range"], "seeker_fov_deg": c["seeker_fov_deg"],
             "track_rate_hz": c["track_rate_hz"]}
+
+
+# factors that affect interception but are NOT yet grounded as cleanly as thrust — the honest deficit.
+DEFICITS = [
+    "terminal guidance / miss-distance (dominated by the guidance law, not a physical field)",
+    "wind & turbulence (no environment model)",
+    "datalink / control latency",
+    "ducted-ring thrust fidelity (unvalidated — see ducted_ring.py)",
+]
 
 
 def maximize(cfg0, iters=16):
@@ -134,6 +151,11 @@ def main(do_cfd=False):
     print(f"  {len(SCENARIOS)} incoming threats (speeds {min(s[2] for s in SCENARIOS)}-"
           f"{max(s[2] for s in SCENARIOS)} m/s, ranges {min(s[1] for s in SCENARIOS)}-"
           f"{max(s[1] for s in SCENARIOS)} km); asset keep-out {KEEPOUT:.0f} m.  Score = intercept hits.")
+    print("  objective factors (physics-grounded): thrust->a_max, drag->v_max, energy->endurance,")
+    print("                                        seeker->detect/FOV/track, torque/inertia->turn-rate")
+    print("  DEFICITS (affect intercept but NOT yet grounded as cleanly as thrust):")
+    for d in DEFICITS:
+        print(f"    - {d}")
 
     cfg0 = dict(D_in=15, pitch_in=8, Kv=340, I_max=45, S=6, cap_mAh=8000,
                 C_rate=25, L_arm=0.33, payload=0.6, n_rotors=4, wh_per_kg=300.0,
