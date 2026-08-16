@@ -32,6 +32,17 @@ PATCH = {
         provenance="derived", level="mid", domain="electro_optics",
         requires={"n_pixels": 1, "angular_resolution": 1},
         points_to=["optics.angular_resolution"]),
+    # the conserved budget behind the seeker wall: a fixed sensor resolves a fixed number of spots,
+    # so resolution (detection range) and instantaneous coverage trade against each other. Adding a
+    # TEMPORAL degree of freedom (scanning) buys coverage over time — this is the invariant V3 ascends to
+    # in order to hint that the seeker is missing a motion DOF.
+    "optics.space_bandwidth_product": dict(
+        quantity="space_bandwidth_product",
+        law="SBP = coverage_solid_angle / IFOV^2 = n_pixels (fixed) — resolution vs instantaneous coverage "
+            "trade on a conserved budget (etendue); a temporal/scan DOF trades time for coverage.",
+        provenance="fundamental", level="fundamental", domain="electro_optics",
+        requires={"n_pixels": 1, "coverage_solid_angle": -1, "angular_resolution": 0},
+        points_to=[]),
 }
 
 # CURATED SYNONYMS: natural engineering function-names -> the library's canonical quantity. Build-time,
