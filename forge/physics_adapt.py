@@ -58,10 +58,15 @@ def _score(caps, mission):
     return feasible, min(margins.values())
 
 
-def adapt(cfg, mission):
-    """Search rotor-field arrangements; return the best for the objective + the full candidate table."""
+def adapt(cfg, mission, tune=True):
+    """V2 = count/field rearrangement ON TOP OF param tuning. For each rotor arrangement, run V1
+    (param repair) to optimize THAT arrangement, then compare. Count is an addition over V1, not a
+    replacement — so V2 is always >= V1. (tune=False falls back to count-only on the base params.)"""
+    import diagnose
     cands = []
     for mode, n, cfgn in arrangements(cfg):
+        if tune:
+            cfgn = diagnose.repair(cfgn, mission)[0]      # V1 inside V2: tune params for this count
         _s, _m, _b, _c, caps = _eval(cfgn)
         feasible, worst = _score(caps, mission)
         cands.append({"mode": mode, "n": n, "cfg": cfgn, "caps": caps,
