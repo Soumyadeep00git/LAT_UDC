@@ -89,7 +89,7 @@ def p_overview(pdf):
             "SEEKER, not thrust. That finding, and the clear separation of what is validated vs prototype vs\n"
             "frontier, is the point of this report: an engine that states what it grounds AND what it can't.",
             fontsize=10.5, color=INK, va="top", linespacing=1.5)
-    ax.text(50, 4, "page 1 / 8", ha="center", color=MUT, fontsize=8)
+    ax.text(50, 4, "page 1 / 9", ha="center", color=MUT, fontsize=8)
     pdf.savefig(fig); plt.close(fig)
 
 
@@ -123,7 +123,7 @@ def p_hourglass(pdf):
             "Two worlds: the DARK (abstraction / law space — infinite, where it imagines) and the LIGHT (the\n"
             "coupled solve — definite, where reality says yes or no). V3 is the traffic between them.",
             fontsize=9.5, color=INK, va="top", linespacing=1.5)
-    ax.text(50, 1.8, "page 2 / 8", ha="center", color=MUT, fontsize=8)
+    ax.text(50, 1.8, "page 2 / 9", ha="center", color=MUT, fontsize=8)
     pdf.savefig(fig); plt.close(fig)
 
 
@@ -167,7 +167,7 @@ def p_library(pdf):
         "   (viscosity, moduli): the residue descends, it does not vanish.",
         "A full law is C(Re): a SWEEP of solves; and only an exact (DNS) solve is purely first-principles.",
     ])
-    ax.text(50, 2, "page 3 / 8", ha="center", color=MUT, fontsize=8)
+    ax.text(50, 2, "page 3 / 9", ha="center", color=MUT, fontsize=8)
     pdf.savefig(fig); plt.close(fig)
 
 
@@ -195,11 +195,54 @@ def p_optimizer(pdf):
         ax.text(37, y + 1.7, "result: " + res, fontsize=9.0, color=MUT, va="center")
     ax.text(8, 5.5, "Escalation: V1 fires first; on exhaustion (null space collapses) V2; then V3. "
             "One metric — radicality — measures how far each moves.", fontsize=9.3, color=INK, va="top")
-    ax.text(50, 1.8, "page 4 / 8", ha="center", color=MUT, fontsize=8)
+    ax.text(50, 1.8, "page 4 / 9", ha="center", color=MUT, fontsize=8)
     pdf.savefig(fig); plt.close(fig)
 
 
-# ---------------------------------------------------------------- page 5: backend pipeline & wiring
+# ---------------------------------------------------------------- page 5: the seeker case (decoupling)
+def p_seeker(pdf):
+    fig, ax = page("The Seeker Case — meta-requirements & decoupling",
+                   "when a field is over-constrained, prescribe a missing DIMENSION — separate from the hardware")
+    # two senses of decoupling
+    ax.text(6, 90, "Two things 'decoupling' means here", fontsize=12, fontweight="bold", color=INK)
+    box(ax, 6, 79, 42, 8.5, "1)  physics  vs  library   (V3d)\nlaw FORM from units; constant from a solve;\nlibrary becomes a cache of constants",
+        fc="#fff8ec", ec=C_OBJ, fs=8.8, align="left")
+    box(ax, 52, 79, 42, 8.5, "2)  physics-requirement  vs  hardware  (V3c)\nthe field needs a new DIMENSION (motion);\nwhich actuator supplies it is a separate choice",
+        fc="#fdeaf3", ec=C_V3, fs=8.8, align="left")
+
+    ax.text(6, 73, "The seeker wall — why interception plateaus at 7/12", fontsize=12, fontweight="bold", color=INK)
+    ax.text(6, 68.5,
+            "A fixed camera obeys a conserved budget (space-bandwidth / étendue): detection range ×\n"
+            "instantaneous coverage is fixed. It cannot have BOTH long detection AND wide field of view.",
+            fontsize=9.6, color=INK, va="top", linespacing=1.5)
+    box(ax, 10, 57, 36, 6, "detect 2500 m  →  needs 7.7° FOV", fc="white", ec=EDGE, fs=9)
+    box(ax, 54, 57, 36, 6, "mission needs a 60° search cone", fc="white", ec=EDGE, fs=9)
+    ax.text(50, 54.2, "static camera: OVER-CONSTRAINED (infeasible)", ha="center", color=BAD, fontsize=9.5, fontweight="bold")
+
+    ax.text(6, 49, "What V3c did (grounded, then decoupled)", fontsize=12, fontweight="bold", color=INK)
+    box(ax, 8, 39, 24, 7, "SEE\nascend to\nspace_bandwidth_product", fc="#eef7f2", ec=C_PHY, fs=8, bold=True)
+    box(ax, 38, 39, 24, 7, "DETECT\nstatic field\nover-constrained", fc="white", ec=BAD, fs=8, bold=True)
+    box(ax, 68, 39, 24, 7, "PRESCRIBE\nadd a SCAN DOF\n(revisit 0.78 s)", fc="#fdeaf3", ec=C_V3, fs=8, bold=True)
+    arrow(ax, 32, 42.5, 38, 42.5); arrow(ax, 62, 42.5, 68, 42.5)
+
+    # the decoupling: physics DOF vs hardware actuator
+    box(ax, 20, 26, 26, 7, "PHYSICS says\n\"the field needs MOTION\"", fc="#eef7f2", ec=C_PHY, fs=8.5, bold=True)
+    box(ax, 54, 26, 30, 7, "HARDWARE picks the actuator\ngimbal | rotating mount | e-beam-steer", fc="#eef2ff", ec=C_HW, fs=8, bold=True)
+    ax.add_patch(FancyArrowPatch((46, 29.5), (54, 29.5), arrowstyle="<->", mutation_scale=13, color=MUT, lw=1.6))
+    ax.text(50, 32, "decoupled", ha="center", color=MUT, fontsize=8.5, style="italic")
+
+    ax.text(6, 20,
+            "The result: V3 discovered a missing DIMENSION (motion), grounded in étendue, and prescribed it\n"
+            "WITHOUT naming a gimbal. That is the difference from V1 (a missing value) and V3b (a missing form).",
+            fontsize=9.5, color=INK, va="top", linespacing=1.5)
+    ax.text(6, 12.5, "Honest: this is a HINT / requirement, not a built scanning seeker. Realizing it — and re-scoring the\n"
+            "7/12 with a scanning sensor — is the next step. What V3c delivers is the *right question*, decoupled.",
+            fontsize=9.2, color=MUT, va="top", linespacing=1.5)
+    ax.text(50, 3, "page 5 / 9", ha="center", color=MUT, fontsize=8)
+    pdf.savefig(fig); plt.close(fig)
+
+
+# ---------------------------------------------------------------- page 6: backend pipeline & wiring
 def p_pipeline(pdf):
     fig, ax = page("Backend Pipeline — how everything is wired", "mission → encode → optimize → decode → backends → files")
     box(ax, 4, 86, 18, 7, "MISSION\n+ objective", fc="#fff8ec", ec=C_OBJ, fs=9, bold=True)
@@ -228,7 +271,7 @@ def p_pipeline(pdf):
         box(ax, xx, 45, 18, 7, f + "\n" + r, fc="white", ec=c, fs=7.6, bold=True)
         arrow(ax, xx + 9, 60, xx + 9, 52, color=EDGE, lw=1.1)
         xx += 18.6
-    ax.text(50, 3, "page 5 / 8", ha="center", color=MUT, fontsize=8)
+    ax.text(50, 3, "page 6 / 9", ha="center", color=MUT, fontsize=8)
 
     ax.text(4, 39, "Deficit-driven dispatch:", fontsize=10, fontweight="bold", color=INK)
     ax.text(4, 35.5, "a field inside its reduced-model validity uses the fast model; when it leaves validity\n"
@@ -265,11 +308,11 @@ def p_files(pdf):
         ("solved", "CFD drag (OpenFOAM RANS), beam-FE stress"),
         ("official release", ".apj (real ArduCopter firmware, not tool-authored — cannot compile here)"),
     ], dy=3.0)
-    ax.text(50, 3, "page 6 / 8", ha="center", color=MUT, fontsize=8)
+    ax.text(50, 3, "page 7 / 9", ha="center", color=MUT, fontsize=8)
     pdf.savefig(fig); plt.close(fig)
 
 
-# ---------------------------------------------------------------- page 7: comparison table
+# ---------------------------------------------------------------- page 8: comparison table
 def p_comparison(pdf):
     fig, ax = page("Algorithm Comparison", "same mission; what each tier changes, what it returns, its cost & status")
     cols = ["tier", "what it changes", "mechanism", "result (a≥5g,v≥26,e≥16)", "status"]
@@ -301,11 +344,11 @@ def p_comparison(pdf):
         "   dimension / derived physics), but V3b is an unvalidated model and V3c is a hint, not a built part.",
         "On the interception score every airframe tier plateaus at 7/12 — the wall is the SEEKER, not thrust.",
     ])
-    ax.text(50, 3, "page 7 / 8", ha="center", color=MUT, fontsize=8)
+    ax.text(50, 3, "page 8 / 9", ha="center", color=MUT, fontsize=8)
     pdf.savefig(fig); plt.close(fig)
 
 
-# ---------------------------------------------------------------- page 8: honest can / can't
+# ---------------------------------------------------------------- page 9: honest can / can't
 def p_honest(pdf):
     fig, ax = page("Honest Scope — what it does, what it doesn't", "the line between validated, prototype, and frontier")
     ax.text(7, 90, "CAN (real & verified)", fontsize=12, fontweight="bold", color=GOOD)
@@ -343,13 +386,13 @@ def p_honest(pdf):
             "derivation, so validating the small physics validates the higher — the leash lengthens exactly as\n"
             "far as the derivation stays sound and in-envelope. That boundary is the real remaining work.",
             fontsize=9.4, color=INK, va="top", linespacing=1.5)
-    ax.text(50, 3, "page 8 / 8", ha="center", color=MUT, fontsize=8)
+    ax.text(50, 3, "page 9 / 9", ha="center", color=MUT, fontsize=8)
     pdf.savefig(fig); plt.close(fig)
 
 
 def main():
     with PdfPages(OUT) as pdf:
-        p_overview(pdf); p_hourglass(pdf); p_library(pdf); p_optimizer(pdf)
+        p_overview(pdf); p_hourglass(pdf); p_library(pdf); p_optimizer(pdf); p_seeker(pdf)
         p_pipeline(pdf); p_files(pdf); p_comparison(pdf); p_honest(pdf)
     print("wrote", os.path.abspath(OUT), "-", round(os.path.getsize(OUT) / 1024, 1), "KB")
 
