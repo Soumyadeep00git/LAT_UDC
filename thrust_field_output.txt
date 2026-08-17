@@ -1,0 +1,18 @@
+==================================================================================
+THRUST FIELD  -  solve the induced-flow field; find the field that MAXIMIZES thrust
+==================================================================================
+disk: R_tip 165 mm, area 0.0857 m^2 | shaft power 250 W (hover)
+
+start (non-uniform, tip-loaded field): T = 20.797 N
+solved (field optimizer, 4000 steps):    T = 23.592 N
+   -> field is now UNIFORM (v_i spread 0.00% of mean; optimizer found it, not assumed)
+   -> gain over the non-uniform start: +13.4% thrust for the SAME power
+
+VALIDATE against analytic Betz optimum: T_ideal = 23.592 N   (rel err 1.2e-15  -> MATCH)
+   the solved field reproduces P = T^1.5/sqrt(2 rho A) - the hover-power law, FM=1 (ideal).
+
+----------------------------------------------------------------------------------
+SOLVED, not flagged: the thrust FIELD was the unknown; the optimizer resolved the distribution
+that maximizes thrust (uniform induced velocity) and it checks out against first principles.
+Next fidelity: add profile drag + tip loss per annulus -> the field's real figure-of-merit (<1),
+which replaces the assumed FM=0.70 and prices non-ideal loading -> feeds straight into the caps.
