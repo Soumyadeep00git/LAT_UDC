@@ -1,0 +1,44 @@
+==============================================================================
+DYNAMIC MISSING-DIMENSION DIAGNOSIS  (field.py's logic, in the TIME domain)
+==============================================================================
+Plant : m*x'' = k*(r - x) - c*x'   (m=1, r=1.0, released from rest)
+Axis  : k (stiffness/gain) is the ONLY free control axis.
+        c (damping) is a FIXED plant property, c = 0.40  (the immutable 'law').
+Demands: A) rise to 90% within 2.0 s   B) peak overshoot <= 20%
+------------------------------------------------------------------------------
+Sweeping k with c fixed = 0.40  (every row is a real solve):
+   k        backend        rise90   overshoot    A ok?    B ok?   
+   0.1      OpenModelica   7.700    7.4%         no       YES     
+   0.2      OpenModelica   4.530    20.8%        no       no      
+   0.4      OpenModelica   2.880    35.1%        no       no      
+   0.8      OpenModelica   1.900    48.6%        YES      no      
+   1.5      OpenModelica   1.330    59.5%        YES      no      
+   3        OpenModelica   0.920    69.4%        YES      no      
+   6        OpenModelica   0.640    77.3%        YES      no      
+   12       OpenModelica   0.440    83.4%        YES      no      
+------------------------------------------------------------------------------
+Demand A (fast rise) reachable alone at k in: [0.8, 1.5, 3.0, 6.0, 12.0]
+Demand B (low overshoot) reachable alone at k in: [0.1]
+Both A and B at the SAME k: NONE - disjoint over the swept axis
+------------------------------------------------------------------------------
+READING: each demand is satisfiable ALONE but NOT jointly by tuning k.
+         Same shape as field.py MISSING_DOF: the structure is missing a DEGREE OF
+         FREEDOM. The binding invariant is the fixed damping c (the plant 'law').
+         It cannot be relaxed by tuning k - only by ADDING AN AXIS: a damping / rate DOF.
+------------------------------------------------------------------------------
+RELAX: add the damping/rate axis c as a free DOF; hold k = 12 (fast rise, meets A).
+       Search c for the smallest value that also meets B (real solves):
+   c        backend        rise90   overshoot    A ok?    B ok?   
+   0.4      OpenModelica   0.440    83.4%        YES      no      
+   0.8      OpenModelica   0.460    69.4%        YES      no      
+   1.2      OpenModelica   0.480    57.6%        YES      no      
+   1.8      OpenModelica   0.510    42.9%        YES      no      
+   2.4      OpenModelica   0.540    31.3%        YES      no      
+   3.2      OpenModelica   0.600    19.5%        YES      YES     
+==============================================================================
+RESULT: with the added damping axis, k=12 AND c=3.2 meet BOTH demands:
+        rise90 = 0.600 s (<= 2.0)   overshoot = 19.5% (<= 20%)
+        Adding one axis turned an over-determined time-domain conflict into a
+        solvable one - exactly field.py.relax_with_new_dof, now proven over time.
+STATUS: CONFIRMED (solver-proven). Backend: OpenModelica (omc, WSL) - mature DASSL integrator.
+==============================================================================
