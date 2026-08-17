@@ -1,0 +1,36 @@
+====================================================================================
+NAME THE COORDINATE  -  traverse the production path to identify which quantity it is
+====================================================================================
+stiffest coordinate (dominant knobs):
+   S         exp -1.00   [energy    ]  pack voltage  V = 3.7 S
+   D_in      exp -0.97   [propulsion]  rotor radius  R = D/2
+   Kv        exp -0.93   [propulsion]  rpm per volt  Omega = Kv*V
+   pitch_in  exp -0.56   [propulsion]  blade pitch (loading/advance)
+
+[1] DIMENSION of the combination (assemble knob roles; the path cancels shared voltage V):
+     net dims (positive form): L^1.53 V^0.07 T^-0.93
+     voltage: CANCELLED across energy->propulsion (S makes V, Kv consumes it -> a rate)
+     clean speed [L T^-1]?  False
+
+[2] TRAVERSE the path, subsystem by subsystem:
+     energy      : S      -> bus voltage  V
+     propulsion  : Kv,V   -> Omega (rotor angular rate [T^-1])   <- V cancels here (confirmed)
+     propulsion  : D      -> R = D/2  ([L])
+     propulsion  : pitch  -> blade loading/advance ([L], and its exponent is NOT small)
+
+[3] WHAT THE TRAVERSAL ACTUALLY SAYS (not what I want it to say):
+     => NOT a clean speed. Net dimension ~ L^1.5 T^-0.9, i.e. speed x length^0.5.
+        The tip-speed BACKBONE is real (Kv*S*D -> Omega*R, voltage cancels), but PITCH rides
+        along with real weight (a length), pushing L past 1. So the coordinate is a BLEND:
+        tip speed x a pitch/loading factor - physically sensible (thrust needs speed AND
+        loading) but NOT one textbook quantity. 'Tip speed' alone was my over-naming.
+     ruled OUT regardless: v_max (an output, not born from these knobs); induced velocity
+     (from thrust/disk-area, a different path); speed of sound (no knob dependence).
+
+------------------------------------------------------------------------------------
+HONEST RESULT: your method worked - and it caught me. The dimension-along-the-path shows this
+coordinate is tip-speed-DOMINATED but blended with pitch loading (~L^1.5 T^-1), not the clean
+'tip speed' I asserted earlier. The voltage cancellation across energy->propulsion is real and
+mechanical; the naming is only as clean as the coordinate is, and this one is a blend.
+So traversal-on-a-subsystem-basis is the RIGHT tool - it grounds honestly, including saying
+'this is not a single named quantity' when that's the truth.

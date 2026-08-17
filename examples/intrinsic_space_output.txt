@@ -1,0 +1,32 @@
+====================================================================================
+INTRINSIC SPACE  -  the coordinates the design problem actually has (sloppy-model analysis)
+====================================================================================
+model: caps_of(cfg) -> ['a_max_g', 'v_max', 'endurance_min']   knobs: ['D_in', 'pitch_in', 'Kv', 'I_max', 'S', 'cap_mAh', 'L_arm']
+
+STIFFNESS SPECTRUM (eigenvalues of J^T J, normalized to the stiffest):
+   dir 1:    1.00e+00  ##############################
+   dir 2:    5.56e-02  #######################
+   dir 3:    4.49e-02  #######################
+   dir 4:    2.44e-17  
+   dir 5:    1.81e-18  
+   dir 6:   -4.92e-19  
+   dir 7:   -5.05e-17  
+
+   sloppiness: stiffest/sloppiest = 1.9e+31  (spans 31 orders)
+   EFFECTIVE DIMENSION: ~3 stiff direction(s) out of 7 nominal knobs.
+
+THE REAL COORDINATES (stiff eigenvectors = combinations of the knobs that actually move the design):
+   [stiff 1, weight 1.00]  ~  S^-0.56  *  D_in^-0.55  *  Kv^-0.53  *  pitch_in^-0.31
+   [stiff 2, weight 0.06]  ~  cap_mAh^-0.65  *  Kv^+0.41  *  pitch_in^+0.38  *  D_in^-0.30  *  I_max^+0.28
+   [stiff 3, weight 0.04]  ~  D_in^-0.71  *  S^+0.40  *  cap_mAh^+0.40  *  pitch_in^+0.39
+
+SLOPPY DIRECTIONS (wiggle these combinations for free - the optimizer wastes effort here):
+   [sloppy, weight -5.0e-17]  ~  Kv^+0.70  *  pitch_in^-0.64
+   [sloppy, weight -4.9e-19]  ~  I_max^-0.94
+
+------------------------------------------------------------------------------------
+WHAT THIS PRODUCED: the nominal optimizer space is 7 knobs; the REAL space is ~3 stiff combination(s).
+Optimizing D_in and pitch_in separately is optimizing in raw knob-space; the physics moves along
+these power-law COMBINATIONS instead. That is the 'more real space' - discovered, not assumed.
+Honest bound: this is the LOCAL geometry at one operating point; the stiff set is what the
+evidence at this point reveals, and naming each combination's physical meaning is still grounding.
