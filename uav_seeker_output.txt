@@ -1,0 +1,21 @@
+==================================================================================
+UAV-SEEKER PACK  -  the sanctuary as a linked, closed, executable structure
+==================================================================================
+  solve status: solved   residual: 7.7e-15   laws: 15   orphans: 0
+
+  CAPABILITIES from the linked laws     vs   uav.py (the trusted model):
+    mass (kg)                     3.803          3.803   rel_err 2.17e-04
+    a_max (g)                     2.870          2.870   rel_err 2.43e-04
+    v_max (m/s)                  16.041         16.041   rel_err 0.00e+00
+    endurance (min)              23.068         23.061   rel_err 3.20e-04
+    detection_range (m)        2216.667       2216.667   rel_err 0.00e+00
+    seeker FOV (deg)              8.685          8.685   rel_err 2.05e-16
+    track rate (Hz)              60.000         60.000   rel_err 0.00e+00
+
+  WORST rel err vs uav.py: 3.20e-04  -> MATCH (structure reproduces the model)
+
+  SEEKER LIMITER (why interception is seeker-bound), read from the structure:
+    detection 2217 m needs IFOV 0.079 mrad -> FOV 8.7 deg (coverage 0.023 sr)
+    a 60 deg search cone is 0.84 sr -> static seeker covers it: False  (needs 37 looks -> a SCAN degree of freedom)
+
+  grounding: 8/15 laws hit an existing sanctuary node (7 are new producer nodes this pack defines).
