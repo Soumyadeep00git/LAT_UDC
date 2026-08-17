@@ -368,7 +368,7 @@ def p_v3modes(pdf):
     modes = [
         ("V3a  compositional", "select an existing embodiment from the library", "collapses to V2 (only realizes registered models)", WARN, "real"),
         ("V3b  generative", "dissolve to a field, reshape it, RE-EMBODY a new form", "produced the ducted ring — a new form, UNVALIDATED", WARN, "prototype"),
-        ("V3c  meta-requirement", "over-constrained field -> prescribe a MISSING DIMENSION", "\"seeker needs a scan DOF\" — decoupled from the gimbal", GOOD, "real (hint)"),
+        ("V3c  meta-requirement", "over-constrained field -> prescribe a MISSING DIMENSION", "general engine: 2 domains CONFIRMED by the solve (seeker, battery)", GOOD, "real (2 domains)"),
         ("V3d  decoupling", "derive the law FORM from units + constant from a solve", "a complete library-free drag law", GOOD, "real (drag)"),
     ]
     y = 84
@@ -387,35 +387,52 @@ def p_v3modes(pdf):
     save(pdf, fig)
 
 
-# ================================================================ 9  SEEKER CASE
+# ================================================================ 9  META-REQUIREMENT ENGINE
 def p_seeker(pdf):
-    fig, ax = page("§7", "The Seeker Case — Meta-Requirement & Decoupling",
-                   "when a field is over-constrained, prescribe a missing DIMENSION — separate from the hardware")
-    head(ax, 6, 87, "Two things 'decoupling' means")
-    box(ax, 6, 76, 42, 8, "physics  vs  library   (V3d)\nform from units; constant from a solve;\nlibrary -> a cache of constants",
-        fc="#2a2312", ec=OBJ, fs=8.7, align="left")
-    box(ax, 52, 76, 42, 8, "physics-requirement  vs  hardware   (V3c)\nthe field needs a new DIMENSION (motion);\nthe actuator that supplies it is a separate choice",
-        fc="#2a1622", ec=V3C, fs=8.7, align="left")
-    head(ax, 6, 70, "The seeker wall — why interception plateaus at 7/12")
-    para(ax, 6, 66,
-         "A fixed camera obeys a conserved budget (space-bandwidth / etendue): detection range x instantaneous\n"
-         "coverage is fixed. It cannot have both long detection AND a wide field of view.", fs=9.3)
-    box(ax, 10, 55, 36, 5.5, "detect 2500 m -> needs 7.7 deg FOV", fc=BG2, ec=RULE, fs=9)
-    box(ax, 54, 55, 36, 5.5, "mission needs a 60 deg search cone", fc=BG2, ec=RULE, fs=9)
-    ax.text(50, 52, "static camera: OVER-CONSTRAINED (infeasible)", ha="center", color=BAD, fontsize=9.3, fontweight="bold")
-    head(ax, 6, 46, "What V3c did — grounded, then decoupled")
-    box(ax, 8, 36, 24, 6.5, "SEE\nascend to\nspace_bandwidth_product", fc="#122421", ec=PHY, fs=7.7, bold=True)
-    box(ax, 38, 36, 24, 6.5, "DETECT\nstatic field\nover-constrained", fc=BG2, ec=BAD, fs=7.8, bold=True)
-    box(ax, 68, 36, 24, 6.5, "PRESCRIBE\nadd a SCAN DOF\n(revisit 0.78 s)", fc="#2a1622", ec=V3C, fs=7.8, bold=True)
-    arrow(ax, 32, 39.2, 38, 39.2); arrow(ax, 62, 39.2, 68, 39.2)
-    box(ax, 18, 24, 26, 6.5, "PHYSICS says\n\"the field needs MOTION\"", fc="#122421", ec=PHY, fs=8.3, bold=True)
-    box(ax, 54, 24, 30, 6.5, "HARDWARE picks the actuator\ngimbal | rotating mount | e-steer", fc=BG3, ec=HW, fs=7.9, bold=True)
-    ax.add_patch(FancyArrowPatch((44, 27.2), (54, 27.2), arrowstyle="<->", mutation_scale=12, color=MUT, lw=1.6))
-    ax.text(49, 29.6, "decoupled", ha="center", color=MUT, fontsize=8, style="italic")
-    para(ax, 6, 18,
-         "V3 discovered a missing DIMENSION (motion), grounded in etendue, and prescribed it WITHOUT naming a\n"
-         "gimbal — the difference from V1 (a missing value) and V3b (a missing form). Honest: this is the right\n"
-         "question, decoupled — a hint, not a built scanning seeker; realizing it and re-scoring 7/12 is next.", fs=9.1)
+    fig, ax = page("§7", "The Meta-Requirement Engine (V3c)",
+                   "a general conservation-wall detector: value (V1) -> structure (V2) -> a missing dimension")
+    para(ax, 6, 88,
+         "V3c is no longer one hand-built seeker check. It is a general engine: give it a design and a mission,\n"
+         "it runs the real V1 (values) and V2 (structure), then scans grounded TRADE-INVARIANTS. Where a\n"
+         "conserved budget is over-saturated and value+structure are exhausted, it prescribes the MISSING\n"
+         "DIMENSION — decoupled from the hardware that would supply it. Nothing is hand-flagged.", fs=9.3)
+    head(ax, 6, 74, "Fired on unshaped missions across three physics domains  (forge/v3c_demo.py)")
+    # table header
+    cols = [(7, "domain / invariant"), (33, "conserved budget"), (55, "missing dimension"), (81, "status")]
+    ax.add_patch(Rectangle((6, 66.5), 88, 3.4, color=HEAD))
+    for x, t in cols:
+        ax.text(x, 68.2, t, fontsize=8.2, color=INK, fontweight="bold", va="center")
+    rows = [
+        ("seeker  etendue (SBP)", "n_pixels: range x coverage", "temporal / SCAN DOF", "CONFIRMED", GOOD),
+        ("battery  Ragone", "energy vs power (1 chem.)", "2nd energy domain (hybrid)", "CONFIRMED", GOOD),
+        ("rotor  advance-ratio", "one pitch, one eff. peak", "variable / collective pitch", "MODEL-GAP", WARN),
+    ]
+    y = 63.5
+    for a, b, c, st, col in rows:
+        ax.text(7, y, a, fontsize=8.1, color=INK, va="center")
+        ax.text(33, y, b, fontsize=8.0, color=MUT, va="center")
+        ax.text(55, y, c, fontsize=8.1, color=INK, va="center")
+        ax.text(81, y, st, fontsize=8.1, color=col, va="center", fontweight="bold")
+        ax.plot([6, 94], [y - 1.7, y - 1.7], color="#1c2836", lw=0.6)
+        y -= 3.4
+    ax.text(6, 52.5, "CONFIRMED = the solve proves value+structure exhausted and the budget over-saturated.  "
+            "MODEL-GAP = a real", fontsize=7.8, color=MUT)
+    ax.text(6, 50.2, "trade the reduced model cannot yet PRICE (hover power is momentum-theory, pitch-independent) — "
+            "honestly flagged, not overclaimed.", fontsize=7.8, color=MUT)
+
+    head(ax, 6, 45, "Worked example — the seeker etendue wall")
+    box(ax, 8, 35, 24, 6.5, "SEE\nascend to\nspace_bandwidth_product", fc="#122421", ec=PHY, fs=7.6, bold=True)
+    box(ax, 38, 35, 24, 6.5, "DETECT\neven 8192 px cover\n0.33 < 0.84 sr", fc=BG2, ec=BAD, fs=7.7, bold=True)
+    box(ax, 68, 35, 24, 6.5, "PRESCRIBE\nadd a SCAN DOF\n(revisit 0.04 s)", fc="#2a1622", ec=V3C, fs=7.7, bold=True)
+    arrow(ax, 32, 38.2, 38, 38.2); arrow(ax, 62, 38.2, 68, 38.2)
+    box(ax, 18, 23, 26, 6.5, "PHYSICS says\n\"the field needs MOTION\"", fc="#122421", ec=PHY, fs=8.2, bold=True)
+    box(ax, 54, 23, 30, 6.5, "HARDWARE picks the actuator\ngimbal | rotating mount | e-steer", fc=BG3, ec=HW, fs=7.8, bold=True)
+    ax.add_patch(FancyArrowPatch((44, 26.2), (54, 26.2), arrowstyle="<->", mutation_scale=12, color=MUT, lw=1.6))
+    ax.text(49, 28.5, "decoupled", ha="center", color=MUT, fontsize=8, style="italic")
+    para(ax, 6, 17,
+         "The value option is checked honestly first (even the pixel ceiling can't cover), THEN the missing\n"
+         "dimension (time) is prescribed — grounded in etendue, without naming a gimbal. This is why interception\n"
+         "plateaus at 7/12: the wall is the seeker's conserved budget, and the fix is an axis, not a bigger number.", fs=9.0)
     save(pdf, fig)
 
 
