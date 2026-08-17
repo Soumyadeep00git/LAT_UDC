@@ -1,0 +1,43 @@
+========================================================================================
+1.  SOLVE THE FIELD  -  same engine, three unrelated domains
+========================================================================================
+----------------------------------------------------------------------------------------
+OPTICS   knowns: focal 30mm, pixel 3um, 1920 px, target 0.35m  ->  solve the optical field
+  status=solved  ifov=0.100 mrad  fov=11.0 deg  detection_range=1750 m
+----------------------------------------------------------------------------------------
+KINEMATICS  slider-crank  knowns: r 50mm, l 150mm, theta 1rad, omega 10rad/s  ->  x, vx
+  status=solved  x=171.0 mm  vx=-0.500 m/s
+----------------------------------------------------------------------------------------
+ECONOMICS  supply/demand  knowns: Qd=120-2P, Qs=20+3P  ->  equilibrium P, Q
+  status=solved  P*=20.00  Q*=80.00   (closed form P*=(a-c)/(b+d)=20, Q*=80)
+
+========================================================================================
+2.  DEGREES OF FREEDOM  -  the null space of the linkage Jacobian, read generically
+========================================================================================
+OPTICS with focal & n_pixels open: status=underdetermined  n_dof=2
+  free axis 1: {'focal': -0.412, 'ifov': 0.316, 'n_pixels': 0.591, 'fov': 0.546, 'detection_range': -0.288}
+  free axis 2: {'focal': 0.523, 'ifov': -0.4, 'n_pixels': 0.646, 'fov': 0.121, 'detection_range': 0.366}
+  (the engine found the open axes itself - it did not know these were 'lens' and 'sensor').
+
+========================================================================================
+3.  MISSING DIMENSION  -  imposed demands over-constrain the field (domain-agnostic)
+========================================================================================
+----------------------------------------------------------------------------------------
+OPTICS: demand long detection AND a wide cone, with the sensor pixel count FIXED
+  diagnosis: MISSING_DOF
+    conflict          : demand_detect  vs  demand_cover
+    binding invariant : [{'linkage': 'fov_law', 'node': 'optics.space_bandwidth_product'}, {'linkage': 'detect_law', 'node': ''}]
+    reading           : each demand is satisfiable alone but not together: the field is missing a degree of freedom. The binding invariant is the law linkage coupling the two demands; relaxing it requires ADDING AN AXIS (a new free param), not tuning an existing value.
+    RELAX + scan_gain : status=solved  scan_gain=7.79x  -> adding ONE axis makes the field solvable (the hardware for it is the engineer's choice)
+----------------------------------------------------------------------------------------
+ECONOMICS: the market field has 0 DOF; a policymaker demands Q >= 100 (above equilibrium 80)
+  diagnosis: over-constrained  ->  demands are jointly infeasible; no clean pair isolated - the field has too few degrees of freedom for the imposed set
+    RELAX + subsidy   : status=solved  subsidy=50.0, P=10.00  -> the SAME 'add an axis' move, now a policy instrument
+
+========================================================================================
+READING IT
+  One solver. Optics, a mechanism, and a market - solved, DOF-counted, and diagnosed with the
+  identical code, because all three are just params linked by relations. 'Missing dimension' is a
+  structural property of the linkage graph (over-determined but each demand feasible alone), and
+  its fix is always the same shape: ADD AN AXIS. What that axis becomes in metal - a gimbal, a
+  variable-pitch hub, a subsidy - is the embodiment, and that is handed to the engineers.
