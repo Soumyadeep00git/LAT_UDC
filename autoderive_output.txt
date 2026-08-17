@@ -1,0 +1,30 @@
+====================================================================================
+AUTO-DERIVE + SELF-VERIFY  -  can dimensional analysis recover the library's recorded laws?
+====================================================================================
+  1076 nodes | dimension-table coverage: 22 (2%)  [undimensioned 1054 = table gaps, not verdicts]
+
+  Of the 22 dimensioned nodes:
+    match          3  (13%)
+    mismatch       2  (9%)
+    ambiguous     11  (50%)
+    no_group       6  (27%)
+
+  => AUTO-FILL CEILING (verified by the library's own exponents): 3 nodes = 13% of dimensioned, 0% of all.
+
+  matched (units recover the recorded law):
+    classical_mechanics.newtons_second_law
+    electromagnetism.ohms_law
+    fluid_dynamics.kinematic_viscosity
+
+  mismatched (recorded law is NOT a pure dimensioned monomial):
+    aerodynamics.bernoulli_equation: units->{'velocity': '2', 'air_density': '1'}  recorded->{'velocity': '-1', 'air_density': '1'}
+    rotorcraft_bemt.actuator_disk_momentum: units->{'air_density': '1', 'disk_area': '1', 'induced_velocity': '2'}  recorded->{'air_density': '1', 'disk_area': '1', 'induced_velocity': '1'}
+
+  ambiguous (>1 Pi group: units underdetermine -> generator must ABSTAIN):
+    aerodynamics.airfoil_lift_coefficient
+    aerodynamics.aspect_ratio
+    aerodynamics.lift_force
+    aerodynamics.reynolds_number
+
+  HONEST READ: 'match' is the only class safe to auto-fill; 'mismatch'/'ambiguous' must be
+  curated or wrapped, and 'undimensioned' just needs the table extended. This is the real ceiling.
