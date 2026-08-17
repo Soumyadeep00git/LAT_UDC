@@ -1,0 +1,36 @@
+====================================================================================
+PHYSICS RESOLVER  -  best of a FIXED topology (quad + EO seeker) for the interceptor mission
+====================================================================================
+mission: a>=5.0g  v>=26.0m/s  endur>=16.0min  detect>=2500m over a 60deg cone
+
+1. BEST DESIGN the physics resolves to (lightest feasible):
+   3 rotors, D 14.7in, pitch 7.9, Kv 339, I_max 47, 8.0S 5384mAh   (S relaxed continuous by the optimizer)
+   -> a_max 5.04 g | v_max 27.7 m/s | endurance 31 min | mass 3.00 kg
+   margins (fraction over requirement):
+     a_max      +0.01
+     v_max      +0.06
+     endurance  +0.97
+     seeker     -0.73
+
+2. REACHABLE ENVELOPE - the seeker etendue frontier (n_pixels=1920, cone needs 0.84 sr):
+    focal  detect(m)  FOV(deg)  cover(sr)  detect_marg  cover_marg
+        8        467      41.3      0.518       -0.81      -0.38
+       12        700      27.5      0.230       -0.72      -0.73  <= best-balanced
+       18       1050      18.3      0.102       -0.58      -0.88
+       25       1458      13.2      0.053       -0.42      -0.94
+       35       2042       9.4      0.027       -0.18      -0.97
+       50       2917       6.6      0.013       +0.17      -0.98
+       75       4375       4.4      0.006       +0.75      -0.99
+      110       6417       3.0      0.003       +1.57      -1.00
+      160       9333       2.1      0.001       +2.73      -1.00
+      220      12833       1.5      0.001       +4.13      -1.00
+
+3. THE WALL - binding requirement: SEEKER  (worst-case margin -0.73)
+   The airframe is resolved with margin to spare; the physics ceiling is the SEEKER etendue:
+   detection range x instantaneous coverage is a conserved budget - no static focal length
+   reaches the detection range AND the search cone. The best the physics can do on this
+   topology is bounded here. Passing it needs a NEW DIMENSION (a scan DOF) - which is
+   realization, a separate class of problem, deliberately not attempted.
+
+   This is the physics at its best for the given topology: a resolved design, its reachable
+   frontier, and the exact wall - all from the linked physics, no topology generated.
