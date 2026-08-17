@@ -1,0 +1,25 @@
+==================================================================================
+BLADE DESIGN  -  physics field -> geometry (the DECODE step that closes the pipeline)
+==================================================================================
+intent: 20.0 N thrust @ 9800 rpm, R 165 mm, 2 blades  ->  optimal field v_i = 9.88 m/s (uniform)
+
+ITERATE geometry until forward thrust = target:
+   step 0: forward thrust 20.87 N   (err +4.3%)
+   step 1: forward thrust 20.29 N   (err +1.5%)
+   step 2: forward thrust 20.10 N   (err +0.5%)
+   step 3: forward thrust 20.03 N   (err +0.2%)
+   converged: 20.03 N  vs target 20.0 N  (rel err 1.6e-03)
+
+DESIGNED geometry (chord & twist along the span):
+     r/R  chord(mm)  twist(deg)
+    0.15       82.9        26.3
+    0.37       35.5        13.9
+    0.59       22.4        10.6
+    0.82       16.3         9.1
+    1.00       13.3         8.3
+
+SHAPE: lofted 24 sections -> 1840 triangles -> build_blade\blade.stl
+
+----------------------------------------------------------------------------------
+PIPELINE CLOSED: intent (thrust) -> optimal field -> blade geometry (chord+twist) -> definite
+shape (STL), forward-checked against the physics. Blade design now comes from the pipeline.
