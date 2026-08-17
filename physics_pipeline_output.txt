@@ -1,0 +1,18 @@
+====================================================================================
+PHYSICS PIPELINE  -  solve -> resolve -> diagnose, wired end to end (fixed topology)
+====================================================================================
+
+[1] SOLVE (linked physics): status=solved  15 laws  residual 4.3e-16
+    cross-check vs uav.py: worst rel err 2.5e-04  -> MATCH
+
+[2] RESOLVE (lightest feasible): best design the physics reaches
+    3 rotors, D 14.7in, pitch 7.9, 8.0S 5384mAh
+    a_max 5.04g | v_max 27.7 | endur 31min | mass 3.00kg
+    worst-case margin -0.73  binding: SEEKER
+
+[3] DIAGNOSE: verdict = MISSING DIMENSION (confirmed by the solve)
+    CONFLICT: seeker space-bandwidth (etendue) -> ADD A TEMPORAL / SCAN DEGREE OF FREEDOM (coverage accumulates over time)
+
+------------------------------------------------------------------------------------
+ONE LINE: physics resolves this topology to a 5.0g / 31-min design,
+          matches the trusted model to 2e-04, and names its ceiling: the seeker.
