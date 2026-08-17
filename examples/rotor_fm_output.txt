@@ -1,0 +1,25 @@
+==================================================================================
+ROTOR FIGURE OF MERIT  -  solve the real hover field (profile drag + tip loss), derive FM
+==================================================================================
+designed blade @ 9800 rpm:
+   thrust 18.37 N | power 296 W | ideal power 174 W
+   -> FIGURE OF MERIT = 0.587   (vs the assumed 0.70 in the caps)
+
+FM is now PITCH-DEPENDENT (solve a collective offset -> the model-gap becomes priceable):
+   dpitch(deg) thrust(N)  power(W)     FM
+            -6      5.52       124  0.231
+            -3     11.58       191  0.456
+             0     18.37       296  0.587
+             3     25.62       440  0.652
+             6     33.19       619  0.682
+             9     40.22       819  0.688
+            12     40.16      1089  0.516
+            15     39.82      1379  0.403
+            18     39.37      1668  0.327
+   -> FM peaks near dpitch=+9 deg (FM 0.688); a wrong pitch costs power that the
+      old fixed-FM=0.70 model could NOT see. Hover power is now a function of the blade, solved.
+
+----------------------------------------------------------------------------------
+FOLD INTO CAPS: endurance ~ FM. Solved FM 0.587 vs assumed 0.70 -> endurance x0.84 (-16%) at the design pitch;
+at the optimal collective (FM 0.688) it is x0.98. The assumed constant was
+optimistic for this blade; the solved field prices it, and v3c's pitch MODEL_GAP -> solve-confirmed.
