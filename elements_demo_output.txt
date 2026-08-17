@@ -1,0 +1,23 @@
+====================================================================================
+ELEMENTS - physics defined on the element types; the architecture assembles conservation
+====================================================================================
+
+------------------------------------------------------------------------------------
+DESIGN A - an electrical divider under load   (SOURCE + RESISTANCE x2)
+  architecture -> conservation linkages generated: 2 (hand-written: 0)
+  elements     -> constitutive linkages: 3 from 2 type(s), each defined once
+  SOLVE status=solved:  Vout=8.00 V   I=40.0 mA   (hand check: Vout=12*200/300=8.00 V, I=40 mA)
+
+------------------------------------------------------------------------------------
+DESIGN B - a fluid line: pump -> pipe -> nonlinear orifice   (SAME SOURCE & RESISTANCE types)
+  architecture -> conservation linkages generated: 2 (hand-written: 0)
+  elements     -> constitutive linkages: 3 from 3 type(s), each defined once
+  SOLVE status=solved:  P1=50.0 kPa  P2=32.1 kPa  Q=0.896 L/s
+
+====================================================================================
+READING IT
+  Neither design wrote a conservation law - the wiring did. The only physics authored is each
+  element type's constitutive law, defined ONCE: 'effort_source' served as both a battery and a
+  pump; 'linear_resistance' as both a resistor and a pipe. Architecture supplies conservation;
+  elements supply constitution; the field solver runs the assembly. No physics tree to bridge,
+  no equation retyped. A design is now just: choose element types, wire them.
