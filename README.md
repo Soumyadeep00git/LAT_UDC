@@ -1,178 +1,198 @@
 # LAT_UDC
 
-**A physics-grounded generative design tool for UAVs.** You give it a *mission* (agility, speed,
-endurance, payload); it produces a *buildable vehicle* — geometry, a subsystem architecture, a physics
-model, and the flight-controller configuration — and it can tell you **why** a design fails and **what to
-change**, using real physics instead of a fitted proxy.
-
-It is not a parametric sizing spreadsheet. The design is expressed as a **network of physical subsystems**
-solved to a coupled fixed point, grounded to a curated physics library, and improved by a **null-space
-repair** on the objective gradient — escalating to a different mechanism only when the math proves the
-current one is exhausted.
+**A physics-grounded generative design tool for UAVs.** Give it a *mission*; it resolves the *physics*,
+hands you a *buildable design and its blade geometry*, tells you **why** a design fails and **what
+dimension it's missing**, and honestly **flags what it cannot yet validate**. Real physics throughout — no
+fitted proxy — with a validation gate on every number.
 
 ```
-mission ─► [ optimize ] ─► design ⟵ architecture ⟵ physics ─► STEP · CFD · FEA · ArduPilot
-                │                                                     │
-                └────────────── real forge engine ────────────────────┘
+mission ─► encode ─► resolve (V1·V2·V3) ─► engagement metric ─► solve the FIELD ─► decode to GEOMETRY
+   parts → architecture → physics                (interception)     (thrust field)     (blade chord/twist → STL)
+                         └──────────── every step cross-checked against ground truth ───────────┘
 ```
 
----
-
-## 1. The idea in one page
-
-A vehicle is modelled at four levels of abstraction (an "hourglass"):
-
-| Layer | What it is | Fidelity | In code |
-|------|------------|----------|---------|
-| **I Hardware** | placed parts with mass, geometry, ports | highest | `parts.py`, `cadgen.py` |
-| **II Architecture** | subsystems + couplings (a bond graph) | high | `system.py`, `bondgraph.py`, `uav.py` |
-| **III Physics** | each subsystem = a field/law + boundary conditions | mid | `fields.py`, `agent/library.py` |
-| **IV Objective** | mission as functionals of the fields | lowest (most abstract) | `objectives.py`, `diagnose.py` |
-
-**Encode** goes down (`hardware → architecture → physics → objective`): a concrete vehicle is abstracted
-into what it *achieves*. **Decode** goes back up (`objective → physics → architecture → hardware`): from
-the mission, regenerate a new vehicle. The objective is the bottleneck — the pure statement of intent.
-
-The key discipline: **abstraction + pluggable backend**, used everywhere. A field is solved by a fast
-*reduced* model or handed to an *external* solver (OpenFOAM/CalculiX); geometry is a *template* or a
-*constraint solve*; the autopilot is an *abstract control spec* with an *ArduPilot* backend.
+> **Honest status.** This is a working research prototype. Most numbers are validated for *internal
+> consistency* (against the project's own reduced models / analytic ideals), **not against experiment**.
+> The aerodynamics is ideal momentum/blade-element (no profile drag or tip loss yet); the physics library
+> is ~77% prose (a curated slice is executable); the engagement is point-mass. Every such limit is flagged
+> in code and in §8. The bet is a tool that **knows what it doesn't know**.
 
 ---
 
-## 2. How the four encode transitions actually work
+## 1. Quick start (headless)
 
-These used to be hardcoded; they are now **inferred**, and the inference is verified to reproduce the
-hand-written baseline exactly (`python forge/prototype.py` → `PASS, rel err 0.0`).
+```bash
+pip install -r requirements.txt            # core = numpy; matplotlib for reports/renders
 
-1. **Place hardware** — parts carry typed *ports* (domain × direction × quantity) and a pose. (`parts.py`)
-2. **System ← hardware** — cluster parts by role, count members (→ `n_rotors`), and **wire couplings by
-   matching ports across parts**. This is a bond graph: the motor is a gyrator (elec→mech), the prop a
-   transformer (mech→fluid). The `energy→propulsion→structure` topology is *discovered*, not written.
-   (`bondgraph.infer_system`)
-3. **Physics ← system** — each element grounds to its domain law in the physics library, over its placed
-   region, with boundary conditions taken from the bonds. (`bondgraph.to_fields`, `agent/library.py`)
-4. **Objective ↔ physics** — each requirement is a *functional* of the fields; energy terms are bond-graph
-   balances (endurance = stored electrical energy ÷ flow dissipation). (`objectives.py`)
+# the whole physics layer, end to end (solve -> resolve -> diagnose):
+python forge/physics_pipeline.py
 
----
+# or from Python, via the stable API:
+python - <<'PY'
+import sys; sys.path.insert(0, "forge")
+import api
+out = api.run_pipeline()                    # default quad + interceptor mission
+print(out["resolve"]["caps"], out["diagnose"]["verdict"])
+PY
+```
 
-## 3. The optimizer (decode) — diagnose → repair → escalate
-
-One unified mechanism, pure math, no menu of options (`diagnose.py`, `cascade.py`):
-
-1. **Diagnose** — assemble the Jacobian `J = ∂(metrics)/∂(params)` by finite-differencing the *real*
-   coupled solve. Rank the failing metric's levers; mark each movable/immovable (at a catalogue bound).
-2. **Repair** — step the failing metric uphill **without breaking satisfied requirements**, by projecting
-   the failing gradient onto the null space of the binding constraints:
-   `P = I − Aᵀ(AAᵀ)⁺A`, `d = P·∇g_fail`. Naive optimization is the special case `A = {}` (`P = I`).
-3. **Escalate** — only when `‖d‖ ≈ 0` (the null space collapses — provably no parameter can help) do we
-   change the *mechanism* (rotor→ducted) or, out of scope, the *platform* (→ fixed wing, gated
-   experimental). "The null space says *when*; the library says *what*."
-
-Grounding, alternatives and assumption-relaxation live in `agent/` (`library.py`, `radicality.py`,
-`assumptions.py`) over a curated physics archive (`agent/physics_archive.py`).
+Every capability is also a one-line standalone demo: `python forge/<module>.py` (see the table in §4).
 
 ---
 
-## 4. Backends — the multidisciplinary outputs
+## 2. The idea — an hourglass, resolved and closed
 
-Everything below is real and runs on this machine's toolchain; `system_build.py` assembles the full
-package for a specific vehicle (quad + seeker + electric + ArduPilot) into `build_specimen/`.
+A vehicle is modelled at four levels of abstraction; **encode** goes down to intent, **decode** regenerates
+up from it. The objective is the narrow waist — the pure statement of what the mission needs.
 
-| Discipline | Backend | Output | Status |
-|-----------|---------|--------|--------|
-| **CAD** | CadQuery (OCCT) | `.step` + `.stl` | generated (`cadgen.py`) |
-| **CFD** | OpenFOAM v2412 (WSL) | case + mesh + solved drag | `openfoam_runner.py` — snappyHexMesh off the STL + simpleFoam RANS |
-| **FEA** | CalculiX deck + gmsh mesh + numpy beam FE | `.inp` + `.msh` + solved stress | `fea.py` |
-| **Autopilot** | ArduPilot | `.param` (generated) + official `.apj` | `ardupilot_gen.py` |
-| **Dynamics** | our own 6-DOF FDM | flyable in ArduPilot SITL | `fdm.py`, `fdm_json.py` |
+| Layer | What it is | In code |
+|------|------------|---------|
+| **I Hardware** | placed parts with mass, geometry, typed ports | `parts.py`, `cadgen.py` |
+| **II Architecture** | subsystems + couplings (a bond graph), *discovered from ports* | `bondgraph.py`, `system.py`, `uav.py` |
+| **III Physics** | each subsystem = a field/law + boundary conditions | `fields.py`, `uav_seeker_pack.py`, `agent/library.py` |
+| **IV Objective** | mission as functionals of the fields | `objectives.py`, `diagnose.py`, `engagement.py` |
 
-The validity envelope auto-selects the backend: a field inside its reduced model's limits uses the fast
-model; when it leaves them (tip Mach > 0.7, disk loading > 250 N/m²) it is dispatched to the external
-solver.
-
-**3D CAD app** — `python forge/cad.py` opens a native VTK workspace (feature tree, sliders, shaded model)
-where `[d]` diagnoses, `[r]` repairs, `[g]` swaps to a ducted fan, `[e]` previews the wing escalation.
+Two disciplines run everywhere: **abstraction + pluggable backend** (a field is a fast reduced model *or*
+an external solve), and a **validation gate** (nothing is trusted until it reproduces a ground truth).
 
 ---
 
-## 5. Layout
+## 3. The pipeline, end to end
+
+1. **Parts → Architecture (Layer II).** Parts carry typed ports; `bondgraph.infer_system` clusters them
+   into subsystems and *discovers* the couplings by port-matching (the `energy→propulsion→structure`
+   topology is not written down). → `quadcopter_demo.py`
+2. **Architecture → Physics (Layer III).** Each subsystem grounds to its domain law over its region;
+   `bondgraph.to_fields` emits the fields with BCs from the bonds.
+3. **Optimize — V1 / V2 / V3.**
+   - **V1** tunes parameter *values* by null-space repair on the objective gradient (`diagnose.repair`).
+   - **V2** rearranges *structure* (rotor count) wrapping V1 (`physics_adapt.adapt`).
+   - **V3** abstracts the *function*: a diagnosis-only **conservation-wall detector** that names a
+     *missing dimension* (`v3c.meta_requirements`), and **leashless** enumerates every mechanism the
+     physics graph offers to break a wall, pricing each leap (`v3_leashless.py`).
+4. **Resolve.** On a fixed topology, `resolve.resolve` returns the best design (max worst-case margin),
+   the reachable envelope, and the binding wall. `uav_seeker_pack.solve_uav_seeker` is the UAV-seeker as a
+   closed, linked, executable structure — solved and matched to the trusted model to 0.03%.
+5. **Mission metric.** `engagement.max_interception` plays the resolved vehicle against a threat set
+   (dumb targets: fixed / straight-line) → an interception fraction. `intercept_optimize` makes that
+   fraction the objective the physics maximizes (co-design).
+6. **Solve the FIELD.** `thrust_field.py` treats the induced-flow field as the unknown and optimizes the
+   distribution that maximizes thrust (recovers the Betz optimum, validated to 1e-15).
+7. **Decode to GEOMETRY.** `blade_design.py` inverts blade-element+momentum: target thrust → chord & twist,
+   *iterating the geometry until forward-solved thrust hits the target* (0.16%), then lofts a definite STL.
+
+---
+
+## 4. Use it as independent submodules
+
+Every function is importable and headless. Add `forge/` to `sys.path` (or `import api`).
+
+| Capability | Module · callable | One-liner |
+|---|---|---|
+| Parts → architecture | `bondgraph.infer_system(parts, cfg)` | `sys,meta = infer_system(quad_parts(cfg), cfg)` |
+| Architecture → fields | `bondgraph.to_fields(sys, bus, cap, meta)` | the Layer III physics fields |
+| Capabilities of a design | `diagnose.caps_of(cfg)` | `{a_max_g, v_max, endurance_min, mass}` |
+| **V1** tune values | `diagnose.repair(cfg, mission)` | `cfg2, met, exhausted, hist, info` |
+| **V2** rearrange structure | `physics_adapt.adapt(cfg, mission)` | `best, candidates, rule` |
+| **V3** missing dimension | `v3c.meta_requirements(cfg, mission)` | `verdict + confirmed/model-gap walls` |
+| **V3** leashless frontier | `v3_leashless.alternatives(qty, node, radius)` | every mechanism, priced by radicality |
+| Auto-fill ceiling | `autoderive.analyze(node)` | can units recover this law? |
+| Generic field solver | `field.solve_field(struct, knowns)` | domain-agnostic (optics/kinematics/economics) |
+| Physics on elements | `elements.Network(...).assemble()` | wiring → conservation for free |
+| Executable law | `executable_law.Law(...)`, `.assemble(...)` | prose → runnable + closed dataflow |
+| Resolve best design | `resolve.resolve(cfg, mission)` | best design + envelope + wall |
+| UAV-seeker structure | `uav_seeker_pack.solve_uav_seeker(cfg)` | `sol, caps, laws` (matches uav.py) |
+| Interception metric | `engagement.max_interception(caps, ...)` | fraction nullified over a threat set |
+| Co-design for intercept | `intercept_optimize.search(pool)` | designs maximizing interception |
+| Solve the thrust field | `thrust_field.solve_max_thrust_field(dA, P)` | the max-thrust induced-flow field |
+| Blade from thrust | `blade_design.design_iterate(T, rpm, R)` | chord+twist iterated to the target thrust |
+| Blade → shape | `blade_design.to_stl(geom, path)` | loft to a definite STL |
+| Whole pipeline | `physics_pipeline.run(cfg, mission)` / `api.run_pipeline()` | solve → resolve → diagnose |
+
+The **`forge/api.py`** front door re-exports all of the above (`python forge/api.py` lists them) and adds
+`api.run_pipeline()` and `api.load_backends()` (optional CAD/CFD/FEA/autopilot/dynamics, imported on demand).
+
+---
+
+## 5. Backends — the multidisciplinary outputs (optional)
+
+Real toolchain, auto-selected by validity envelope (reduced model until it leaves its limits, then external).
+
+| Discipline | Backend | In code |
+|-----------|---------|---------|
+| **CAD** | CadQuery (OCCT) → STEP/STL | `cadgen.py` |
+| **CFD** | OpenFOAM v2412 (WSL) → drag | `openfoam_runner.py` |
+| **FEA** | CalculiX/gmsh + beam FE | `fea.py` |
+| **Dynamics (time)** | OpenModelica (WSL) DAE/ODE | `modelica_backend.py`, `dynamic_diagnosis.py` |
+| **Autopilot** | ArduPilot `.param` + official `.apj` | `ardupilot_gen.py` |
+| **6-DOF FDM** | own FDM + SITL JSON bridge | `fdm.py`, `fdm_json.py` |
+| **3D CAD app** | native VTK workspace | `forge/cad.py` (needs `vtk`) |
+
+`system_build.py` / `validate_pipeline.py` assemble the full buildable package into `build_interceptor/`.
+
+---
+
+## 6. Dependencies
+
+- **Core (required):** Python 3.x, **numpy**. That's the entire headless physics layer.
+- **Reports/renders:** matplotlib.
+- **Optional:** vtk (3D app); cadquery+deps (CAD); and the external toolchains OpenFOAM / CalculiX+gmsh /
+  OpenModelica / ArduPilot (WSL). See `requirements.txt`. Missing backends degrade gracefully —
+  `api.load_backends()` reports which are available rather than crashing.
+
+---
+
+## 7. Layout
 
 ```
 LAT_UDC/
-├── forge/                  the design engine
-│   ├── system.py           Subsystem/System spine (the network)
-│   ├── solve.py            coupled fixed-point solver over a shared bus
-│   ├── uav.py              the quad as an explicit System (physics models)
-│   ├── parts.py            (a) hardware = placed parts + typed ports
-│   ├── bondgraph.py        (b)(c) parts → system → fields, by inference
-│   ├── objectives.py       (d) objective = functionals over fields
-│   ├── prototype.py        end-to-end encode chain + baseline consistency check
-│   ├── diagnose.py         Jacobian + null-space repair
-│   ├── cascade.py          layered decode: repair → physics → architecture
-│   ├── fields.py           L3 field schema + reduced/external backends
-│   ├── cadgen.py           CAD backend (CadQuery)
-│   ├── openfoam_runner.py  CFD backend (OpenFOAM via WSL)
-│   ├── fea.py              FEA backend (CalculiX/gmsh + beam FE)
-│   ├── ardupilot_gen.py    ArduPilot params + firmware
-│   ├── fdm.py, fdm_json.py 6-DOF FDM + ArduPilot SITL JSON bridge
-│   ├── system_build.py     assemble the full buildable package
-│   ├── cad.py, ui.html     3D CAD app (VTK) / browser view
-│   ├── nptyping.py         Py3.14 shim so CadQuery imports
-│   └── sanity.py, smoke_test.py, test_novelty.py, validate.py   tests
-├── physics/                reduced physics (aero, battery, motor, prop, structure)
-├── agent/                  physics library, grounding, radicality, assumptions
-└── legacy/                 pre-forge sizing experiments (kept for history)
+├── forge/                       the engine
+│   ├── api.py                   ★ stable callable surface (import this)
+│   ├── physics_pipeline.py      ★ whole pipeline: solve -> resolve -> diagnose
+│   ├── parts.py, bondgraph.py   Layer I->II->III inference (hardware -> architecture -> physics)
+│   ├── system.py, solve.py      the Subsystem/System spine + coupled fixed-point solver
+│   ├── uav.py                   the quad as an explicit System (reduced physics models)
+│   ├── diagnose.py              V1: Jacobian + null-space repair
+│   ├── physics_adapt.py         V2: structure (rotor count) search wrapping V1
+│   ├── v3c.py, v3_leashless.py  V3: missing-dimension diagnosis / leashless mechanism frontier
+│   ├── autoderive.py            measured auto-fill ceiling of the library
+│   ├── field.py                 generic domain-agnostic solver (params + linkages + structure)
+│   ├── elements.py              physics-on-elements: wiring -> conservation for free
+│   ├── executable_law.py        prose law -> runnable + closed dataflow
+│   ├── uav_seeker_pack.py       UAV-seeker as a closed, linked, executable structure
+│   ├── resolve.py               best design + reachable envelope + binding wall
+│   ├── engagement.py            interception metric (point-mass pursuit, dumb targets)
+│   ├── intercept_optimize.py    co-design: maximize interception
+│   ├── thrust_field.py          SOLVE the induced-flow field for max thrust (Betz)
+│   ├── blade_design.py          DECODE: thrust -> blade chord/twist -> STL (forward-validated)
+│   ├── cadgen/openfoam_runner/fea/ardupilot_gen/fdm/modelica_backend.py   external backends
+│   ├── cad.py, make_report.py   3D app / PDF report
+│   └── *_demo.py, validate*.py  runnable demos + tests
+├── physics/                     reduced physics (aero, battery, motor, prop, structure)
+├── agent/                       physics library, grounding, radicality, vocabulary
+├── examples/                    captured demo outputs (reference)
+└── legacy/                      pre-forge experiments (kept for history)
 ```
 
 ---
 
-## 6. Setup & running
+## 8. Honest scope & limitations
 
-**Core** (design engine, no external solvers): Python 3.14, `numpy`. Optional `vtk` for the 3D app.
+Held to the project's own honesty rule:
 
-```bash
-python forge/prototype.py     # encode chain + consistency check (fast, PASS)
-python forge/sanity.py        # foundation/invariant suite
-python forge/cascade.py       # diagnose → repair → escalate demo
-python forge/cad.py           # 3D CAD workspace (needs vtk)
-```
+- **Self-consistency, not reality.** Field solves and the blade validate against the project's reduced
+  models / analytic ideals — internal consistency, not experiment. No external CFD/FEA is folded into this
+  session's field solves yet.
+- **Ideal aero.** `thrust_field`/`blade_design` are momentum + blade-element with no profile drag, tip
+  loss, real airfoil polars, or compressibility → figure-of-merit is the ideal (FM=1). Real FM (<1) is the
+  next fidelity and would flip the rotor pitch `MODEL_GAP` to solve-confirmed.
+- **Library is ~77% prose.** A curated slice is executable; auto-generation is *proven not scalable*
+  (~13% of dimensioned laws recoverable by units alone — `autoderive.py`). The rest is curation.
+- **Delegated atoms.** BEMT thrust, battery, v_max are wrapped from pre-existing reduced models.
+- **Engagement.** Point-mass proportional-navigation vs *dumb* targets (fixed / straight-line). The
+  smart-evader differential game (scenario 3) is a separate, deferred inner policy optimizer.
+- **Topology is fixed.** Generation ("what we need → what we can build") is deliberately not attempted.
+- **Backends.** CFD = airframe drag (not rotor thrust); FEA solves a 1-D beam (3-D deck emitted); `.apj`
+  is the official firmware (not compiled here); FDM↔SITL verified in loopback.
 
-**External backends** (as configured on the build machine):
-- **CAD** — `pip install cadquery cadquery-ocp multimethod typish ezdxf casadi`; on Python 3.14 the local
-  `forge/nptyping.py` shim + a one-line `hashCode` patch are applied automatically.
-- **CFD** — OpenFOAM v2412 in WSL (`source /usr/lib/openfoam/openfoam2412/etc/bashrc`); driven over `/mnt`
-  paths. `python forge/openfoam_runner.py` runs a cavity case as a smoke test.
-- **FEA** — gmsh in WSL for meshing; CalculiX (`ccx`) optional (deck is emitted either way).
-- **ArduPilot** — SITL builds natively in WSL (`./waf configure --board sitl && ./waf copter`); firmware
-  `.apj` is the official release for the chosen board (downloaded, checksummed).
-
-```bash
-python forge/system_build.py  # full package -> build_specimen/ (STEP, CFD, FEA, .param, .apj)
-```
-
-Generated outputs (`build_specimen/`, OpenFOAM cases, STEP/STL, screenshots) are reproducible and are
-**not** committed — see `.gitignore`.
-
----
-
-## 7. Honest scope & limitations
-
-This is a working research tool, not a certified design authority. Held to the project's own honesty rule,
-the current boundaries are:
-
-- **Multirotor scope.** The tool is a UAV/multirotor designer (mechanisms: rotor, ducted fan). The
-  quad→fixed-wing escalation exists but is **gated experimental** (out of the validated envelope).
-- **CFD** computes airframe **parasitic drag**, not rotor thrust (an actuator-line rotor case is future
-  work). BEMT remains the thrust model.
-- **FEA** solves a 1-D beam FE for results; the 3-D CalculiX deck is emitted but not solved here (`ccx`
-  not installed).
-- **CFD-in-loop** compares against the reduced model but does not yet *recompute* v_max/endurance from the
-  CFD drag.
-- **ArduPilot `.apj`** is the official firmware for the board (not compiled here — no ARM toolchain);
-  the design-specific artifact is the generated `.param`.
-- **FDM ↔ SITL** — the FDM and the SIM_JSON bridge are built and verified in loopback; wiring them to a
-  *live* SITL flight (in-WSL, motor-map/sign tuning) is the remaining step.
-- **Magnetic field** grounding uses a placeholder node (no motor-EM node in the library yet).
-
-None of these are hidden; each is flagged in the code/output where it applies.
+None of these are hidden; each is flagged where it applies. The muscles go around these bones.

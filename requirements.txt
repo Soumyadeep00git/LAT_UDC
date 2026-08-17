@@ -1,0 +1,22 @@
+# --- core (required; the whole headless physics layer runs on these) ---
+numpy
+
+# --- reports & renders ---
+matplotlib          # forge/make_report.py, blade/field renders
+
+# --- optional: 3D CAD app ---
+# vtk               # forge/cad.py (native VTK workspace)
+
+# --- optional: CAD backend (STEP/STL generation) ---
+# cadquery
+# cadquery-ocp
+# multimethod
+# typish
+# ezdxf
+# casadi            # (Python 3.14: forge/nptyping.py shim + a hashCode patch are applied automatically)
+
+# --- external toolchains (NOT pip-installable; needed only for the corresponding backend) ---
+#   CFD ....... OpenFOAM v2412 in WSL      (forge/openfoam_runner.py)
+#   FEA ....... CalculiX (ccx) + gmsh      (forge/fea.py)
+#   Dynamics .. OpenModelica (omc) in WSL  (forge/modelica_backend.py, forge/dynamic_diagnosis.py)
+#   Autopilot . ArduPilot SITL in WSL      (forge/ardupilot_gen.py)
