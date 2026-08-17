@@ -1,0 +1,31 @@
+================================================================================
+EXECUTABLE LAW  -  one prose law made runnable, then a closed slice that SOLVES
+================================================================================
+
+1. ONE law, executed (not prose):
+   Weight is mass times gravitational acceleration, W = m g.
+   residual at W=29.43, m=3.0, g=9.81 : 0.00e+00  (0 => satisfied)
+   grounded node: classical_mechanics.newtons_second_law
+
+2. CLOSED SLICE (5 executable laws), solved by the field layer:
+   status=solved  residual=1.1e-16
+   weight        = 29.43 N
+   disk_area     = 0.342 m^2
+   hover_power   = 249.1 W
+   usable_energy = 407592 J
+   ENDURANCE     = 1636 s = 27.3 min
+   hand check    : 1636 s = 27.3 min
+
+3. grounding (each law -> a sanctuary node; gaps shown honestly):
+   classical_mechanics.newtons_second_law        in_library=True  track=physics
+   geometry_math.circle_area                     in_library=False  track=physics  (MISSING producer node - an orphan to ADD; exactly the 77% gap from the audit)
+   rotorcraft_bemt.actuator_disk_momentum        in_library=True  track=physics
+   electrochemistry_batteries.pack_energy        in_library=True  track=math
+   electrochemistry_batteries.pack_energy        in_library=True  track=physics
+
+================================================================================
+READING IT
+  A law now carries a RUNNABLE relation, not prose. Five of them, with inputs tagged base vs
+  derived so the dataflow CLOSES, assemble into the field layer and solve for endurance -
+  a design number produced FROM the laws, grounded in the sanctuary, with uav.py never touched.
+  This is the one-slice proof that the library can be made computable.
