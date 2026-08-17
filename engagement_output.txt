@@ -1,0 +1,26 @@
+==================================================================================
+ENGAGEMENT (dumb targets)  -  interception metric on the resolved airframe
+==================================================================================
+interceptor: v_max 27.7 m/s | a_max 5.0 g (turn-rate 1.79 rad/s)
+geometry (defaults): launch origin | sensing 300 m | kill 5 m | border 600 m | PN guidance
+
+SCENARIO 1 (fixed target):        nullified 100%   (validates reach mechanics)
+SCENARIO 2 (straight-line 0-343): nullified 15%   (sweep speed x all directions)
+   capture vs threat speed:
+         0 m/s | ############################## 100%
+        31 m/s | #########                       29%
+        62 m/s | ####                            12%
+        94 m/s | #                                4%
+       125 m/s | #                                4%
+       156 m/s | #                                4%
+       187 m/s | #                                4%
+       218 m/s | #                                4%
+       249 m/s | #                                4%
+       281 m/s | #                                4%
+       312 m/s | #                                4%
+       343 m/s | #                                4%
+
+----------------------------------------------------------------------------------
+PIPELINE VALIDATED: design -> physics -> caps -> engagement -> interception fraction, end to end.
+Reads as expected: slow/approaching threats caught, fast fleeing ones escape (interceptor slower).
+This fraction is the METRIC V1/V2 will maximize; smart evaders (scenario 3) are the deferred game.
