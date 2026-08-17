@@ -1,0 +1,22 @@
+====================================================================================
+INTERCEPT-OPTIMIZE  -  physics optimizer MAXIMIZING interception (dumb targets, 300 m sensing)
+====================================================================================
+baseline: v_max 15.6 | a_max 2.5g | endur 27min | intercept 15%
+
+searched designs (buildable, mass<=4.5kg): 41
+INTERCEPTION-vs-ENDURANCE frontier (max intercept @ each endurance floor; same sweep as search):
+   endur floor | intercept | best design (v_max, a_max, endur, mass, N)
+          10min |       20% | v_max 45.1 m/s, a_max 3.1g, endur 61min, mass 4.24kg, 4 rotors
+          16min |       20% | v_max 45.1 m/s, a_max 3.1g, endur 61min, mass 4.24kg, 4 rotors
+          22min |       20% | v_max 45.1 m/s, a_max 3.1g, endur 61min, mass 4.24kg, 4 rotors
+          28min |       20% | v_max 45.1 m/s, a_max 3.1g, endur 61min, mass 4.24kg, 4 rotors
+          34min |       20% | v_max 45.1 m/s, a_max 3.1g, endur 61min, mass 4.24kg, 4 rotors
+
+BEST for interception (buildable): v_max 45.1 m/s, a_max 3.1g, endur 61min, mass 4.24kg
+   interception 20%  vs baseline 15%  (baseline v_max 15.6)  [same sweep, apples-to-apples]
+
+------------------------------------------------------------------------------------
+The physics now optimizes the MISSION, not thresholds: it drives v_max/a_max up (that is what
+catches more threats) against the mass cap and endurance floor. Interception is the objective;
+the frontier is the honest trade the physics permits. (% is relative to the assumed threat set.)
+Smart evaders would swap the inner engagement eval for the deferred game solver.

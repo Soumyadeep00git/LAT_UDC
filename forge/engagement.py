@@ -34,7 +34,9 @@ def simulate(caps, threat_speed, threat_heading_deg, spawn_bearing_deg=0.0,
     turn-rate limited by a_max/v_max, steered by proportional navigation."""
     v_max = caps["v_max"]
     a_max = caps["a_max_g"] * G
-    turn_max = a_max / v_max if v_max > 0 else 0.0            # rad/s
+    if v_max <= 1e-6:                                         # a non-flying design catches nothing
+        return False, 0.0, sensing_m
+    turn_max = a_max / v_max                                  # rad/s
 
     th = math.radians(spawn_bearing_deg)
     p_t = sensing_m * np.array([math.cos(th), math.sin(th)])
