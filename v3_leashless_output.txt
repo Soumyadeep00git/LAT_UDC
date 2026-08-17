@@ -1,0 +1,30 @@
+========================================================================================
+V3 LEASHLESS  -  abstraction let loose on the interception ceiling (binding quantity: thrust)
+========================================================================================
+current mechanism (the quad's ceiling): rotorcraft_bemt.rotor_thrust
+
+LEASHED (radius=2, the rotor's budget): 2 reachable mechanism(s)
+   d=1  rotorcraft_bemt.actuator_disk_momentum     [realizable]  variation
+   d=1  rotorcraft_bemt.blade_element_thrust       [FRONTIER]  variation
+
+LEASHLESS (radius=inf): 10 mechanism(s) physics offers for thrust
+    dist realizable  new-physics  mechanism / tier
+       1        yes            0  actuator_disk_momentum   (rotorcraft_bemt, variation)
+       1   FRONTIER            0  blade_element_thrust     (rotorcraft_bemt, variation)
+       3   FRONTIER           13  momentum_thrust          (airbreathing_propulsion, cross-fundamental)
+       3   FRONTIER           15  thrust                   (airbreathing_propulsion, cross-fundamental)
+       3   FRONTIER            2  rocket_thrust            (classical_mechanics, cross-fundamental)
+       3   FRONTIER           19  nozzle_thrust            (compressible_flow, cross-fundamental)
+       3   FRONTIER           23  thrust                   (rocket_propulsion, cross-fundamental)
+       4   FRONTIER            7  pressure_thrust          (airbreathing_propulsion, cross-fundamental)
+       4   FRONTIER           18  specific_thrust          (airbreathing_propulsion, cross-fundamental)
+       5   FRONTIER           33  steady_level_flight      (aerodynamics, cross-fundamental)
+
+----------------------------------------------------------------------------------------
+REALIZABLE (has a built model): 1  -> ['actuator_disk_momentum']
+FRONTIER (imagined, no model):  9  -> jet / rocket / nozzle families
+
+HONEST READ: leashed, V3 sees only the rotorcraft family - no way past the speed wall. Leashless,
+it reaches the airbreathing/rocket mechanisms that COULD break it - but each is a cross-fundamental
+crossing that drags in combustion/thermo/nozzle physics, and NONE is realizable here. V3's true
+reach is to name the platform class that wins and price the leap; building it is the wall.
