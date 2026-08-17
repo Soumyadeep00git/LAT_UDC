@@ -1,0 +1,64 @@
+====================================================================================
+QUADCOPTER  -  parts -> Layer II -> Layer III -> V1, V2, V3
+====================================================================================
+
+PARTS (hardware, 13 placed objects; ports are the substrate):
+   battery   [source     ] out=['bus_voltage', 'i_burst_per_rotor', 'usable_energy'] in=['current']
+   rotor1    [propulsor  ] out=['current', 'thrust', 'slipstream'] in=['bus_voltage', 'i_burst_per_rotor']
+   arm1      [arm        ] out=[] in=['thrust']
+   rotor2    [propulsor  ] out=['current', 'thrust', 'slipstream'] in=['bus_voltage', 'i_burst_per_rotor']
+   arm2      [arm        ] out=[] in=['thrust']
+   rotor3    [propulsor  ] out=['current', 'thrust', 'slipstream'] in=['bus_voltage', 'i_burst_per_rotor']
+   arm3      [arm        ] out=[] in=['thrust']
+   rotor4    [propulsor  ] out=['current', 'thrust', 'slipstream'] in=['bus_voltage', 'i_burst_per_rotor']
+   arm4      [arm        ] out=[] in=['thrust']
+   frame     [frame      ] out=[] in=['thrust']
+   pixhawk   [avionics   ] out=[] in=['bus_voltage']
+   seeker    [sensor     ] out=['detection_range', 'field_of_view_deg', 'track_rate_hz'] in=['bus_voltage']
+   air       [environment] out=[] in=['slipstream']
+
+LAYER II  -  architecture DISCOVERED from the ports (n_rotors=4):
+   energy      func=stored_energy    provides=['bus_voltage', 'i_burst_per_rotor', 'usable_energy']  requires=['current']
+   propulsion  func=thrust           provides=['current', 'thrust']  requires=['bus_voltage', 'i_burst_per_rotor']
+   structure   func=stress           provides=[]  requires=['thrust']
+        - arm         func=bending_stress   provides=[]  requires=['thrust']
+        - frame       func=stress           provides=[]  requires=['thrust']
+   payload     func=mass             provides=[]  requires=['bus_voltage']
+   seeker      func=detection_range  provides=[]  requires=['bus_voltage']
+   bonds (the couplings = the physics edges):
+     propulsion --current [electrical]--> energy
+     energy --i_burst_per_rotor [electrical]--> propulsion
+     energy --bus_voltage [electrical]--> propulsion
+     propulsion --thrust [mechanical]--> arm
+     propulsion --thrust [mechanical]--> frame
+     energy --bus_voltage [electrical]--> payload
+     energy --bus_voltage [electrical]--> seeker
+
+LAYER III  -  physics EXTRACTED (one field per subsystem, BCs from the bonds):
+   [flow      ] from propulsion node=rotorcraft_bemt.rotor_thrust
+        region: 4 rotor disks R=0.165 m + body
+        reduced: {'thrust_N': 79.0, 'disk_loading': 230.6, 'tip_mach': 0.331}   backend: reduced   drives: ['a_max', 'v_max', 'endurance(power)']
+   [electrical] from energy     node=electrochemistry_batteries.pack_energy
+        region: 6S 6000 mAh pack + harness
+        reduced: {'bus_voltage_V': 21.12, 'usable_Wh': 113.2}   backend: reduced   drives: ['endurance(energy)']
+   [stress    ] from structure  node=solid_mechanics.beam_bending_stress
+        region: 4 arms L=0.30 m + frame
+        reduced: {'tip_load_N': 19.75, 'struct_mass_kg': 0.632}   backend: reduced   drives: ['mass', 'structural margin']
+
+------------------------------------------------------------------------------------
+MISSION: a>=5.0g  v>=26.0m/s  endur>=16.0min  detect>=2500m / 60deg cone
+   baseline 4-rotor         a_max 2.51g | v_max 15.6 | endur 27min | mass 2.98kg -> UNMET
+
+V1  (tune PARAM VALUES, fixed 4-rotor):
+   V1 result                a_max 5.17g | v_max 28.9 | endur 34min | mass 3.60kg -> MET  (changed: D_in, pitch_in, Kv, I_max, S, cap_mAh, L_arm)
+
+V2  (also REARRANGE structure - rotor count; lightest feasible):
+   V2 result (3 rotors)     a_max 5.04g | v_max 27.7 | endur 31min | mass 3.00kg -> MET
+
+V3  (abstraction / meta-requirement on the resolved design):
+   verdict: MISSING DIMENSION (confirmed by the solve)
+     CONFLICT: seeker space-bandwidth (etendue)  ->  ADD A TEMPORAL / SCAN DEGREE OF FREEDOM (coverage accumulates over time)
+
+====================================================================================
+RESULT: 7 parts -> discovered architecture -> extracted physics -> V1 tunes it, V2 beats it
+with a count change, V3 finds the seeker etendue wall (a missing scan dimension). Fixed topology.
