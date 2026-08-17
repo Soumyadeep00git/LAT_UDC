@@ -1,0 +1,21 @@
+====================================================================================
+COPTER, NO ASSIST  -  user's inputs honored, Claude's thinking-assists removed
+====================================================================================
+HONORED (yours): 7-part quad | intercept a 100 m/s target | sensing 300 m | kill 5 m
+REMOVED (mine):  the invented 60-deg cone / 2500 m detection, v3c's hand-encoded invariants,
+                 the pre-loaded 'missing dimension' answers, and my verdict prose.
+
+[compute] baseline copter: v_max 16 | a_max 2.5g | endur 27min  ->  intercepts 5% of 100 m/s threats
+[compute] V1/V2 optimized for the objective: v_max 39 | a_max 5.3g | endur 36min  ->  intercepts 10%
+[compute] raw outcome vs heading (0..330 deg, step 30): [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]   (1=caught, 0=escaped)
+
+------------------------------------------------------------------------------------
+WHERE THE TOOL STOPS (this is the honest line):
+  The tool COMPUTED: the best copter it can build intercepts 10% of 100 m/s
+  threats; most headings escape. That is a NUMBER and a raw fact, produced unaided.
+  It did NOT, on its own:
+    - explain WHY in capability terms ('it can't stay with the target') - that reframing was me;
+    - propose a MISSING DIMENSION (a scan/tracking DOF) - that needed my hand-encoded invariant;
+    - suggest a different platform class (jet/rocket) - that was my interpretation;
+    - question whether a 60-deg cone was even the right requirement - I invented that.
+  Unaided, the tool RESOLVES and OPTIMIZES and REPORTS. The thinking on top was mine.
