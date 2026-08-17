@@ -1,11 +1,11 @@
-r"""V3c DEMONSTRATOR — give the engine ordinary missions it has never seen; watch it decide, on its own,
-whether a VALUE (V1), a STRUCTURE (V2), or a MISSING DIMENSION (V3c) is what the problem needs.
+r"""V3c DEMONSTRATOR — one generic diagnostic algorithm, three domains added purely as DATA.
 
-Nothing is hand-flagged. Each case is just a design + a mission. The engine runs the real V1/V2 solve and
-then scans the grounded trade-invariants. It reports each wall with an HONEST status:
-  META_CONFIRMED  the solve proves value+structure exhausted and a conserved budget over-saturated;
-  META_MODEL_GAP  a real conserved trade the reduced model cannot price (so V1 met the thresholds blind);
-  no wall         a value or structure already suffices.
+Each case is just a design + a mission. The SAME engine (v3c.diagnose_invariant) runs the same steps for
+every grounded TradeInvariant in v3c.REGISTRY. Nothing is hand-flagged; no per-domain branch in the engine.
+Output per diagnosis:
+  CONFLICT    a pair of constraints is each satisfiable alone but never together -> a confirmed missing axis
+  MODEL_GAP   a real trade the reduced model cannot price (a constraint returns None)
+  no_wall     a single configuration satisfies every constraint (a value fix), or V1/V2 already met it
 """
 from __future__ import annotations
 
@@ -29,61 +29,61 @@ CASES = [
     ("SEEKER - long detection AND a wide search cone  (optics)",
      dict(a_req=3.0, v_req=14.0, endur_req=12.0,
           detect_range_m=2500.0, search_halfangle_deg=30.0, max_revisit_s=1.5)),
-    ("BATTERY - long endurance AND high-g burst  (electrochemistry)",
-     dict(a_req=7.0, v_req=20.0, endur_req=40.0)),
+    ("BATTERY - endurance AND high-g burst  (electrochemistry)",
+     dict(a_req=8.0, v_req=18.0, endur_req=30.0)),
     ("ROTOR - long loiter AND high dash speed  (aerodynamics)",
      dict(a_req=3.5, v_req=45.0, endur_req=35.0)),
 ]
 
 
 def main():
-    print("=" * 84)
-    print("V3c - GENERAL META-REQUIREMENT ENGINE   (conservation-wall detector)")
-    print("=" * 84)
-    print("For each mission: V1 tunes VALUES, V2 rearranges STRUCTURE; then the engine scans grounded")
-    print("trade-invariants and, where a conserved budget is over-saturated, prescribes the MISSING")
-    print("DIMENSION - decoupled from the hardware that would supply it. Nothing is hand-flagged.")
+    print("=" * 86)
+    print("V3c - UNIFORM META-REQUIREMENT DIAGNOSTIC   (one engine, domains added as grounded DATA)")
+    print("=" * 86)
+    print(f"REGISTRY (data records, not engine code): {[inv.key for inv in v3c.REGISTRY]}")
+    print("For every record the SAME steps run: engaged? -> sample the free config space -> evaluate each")
+    print("constraint at each point -> any point meets all? (value fix) / a pair met alone but never together?")
+    print("(missing axis) / a constraint unpriceable? (model gap).")
 
-    n_confirmed = 0
+    n_conf = 0
     for title, mission in CASES:
-        print("\n" + "-" * 84)
+        print("\n" + "-" * 86)
         print(title)
         r = v3c.meta_requirements(BASE, dict(mission))
         if "V1" in r:
-            print(f"  V1 (values)   : met={r['V1']['met']}  exhausted={r['V1']['exhausted']}  "
-                  f"failing={r['V1']['failing']}")
+            print(f"  V1 (values)   : met={r['V1']['met']}  exhausted={r['V1']['exhausted']}  failing={r['V1']['failing']}")
         if "V2" in r:
-            print(f"  V2 (structure): feasible={r['V2']['feasible']}  ({r['V2']['n_rotors']} rotors, {r['V2']['rule']})")
-        print(f"  ==> RESOLVED BY: {r['resolved_by']}")
+            print(f"  V2 (structure): feasible={r['V2']['feasible']}  ({r['V2']['n_rotors']} rotors)")
+        print(f"  ==> VERDICT: {r['verdict']}")
 
-        for w in r["walls"]:
-            st = w.get("status")
-            if st in ("META_CONFIRMED", "META_MODEL_GAP"):
-                g = w.get("grounded", {})
-                tag = "[META-REQUIREMENT - CONFIRMED]" if st == "META_CONFIRMED" else "[META-REQUIREMENT - MODEL GAP]"
-                print(f"\n  {tag}  {w['name']}   subsystem: {w['subsystem']}")
-                print(f"    grounded in : {g.get('node','?')} (in_library={g.get('in_library')}, "
-                      f"descent {g.get('descent_depth','?')})")
-                print(f"    established : {w['confirmed_by']}")
-                print(f"    budget      : {w['budget']}")
-                print(f"    demand      : {w['demand']}")
-                print(f"    MISSING DOF : {w['missing_dof']}")
-                print(f"    quantify    : {w['quantify']}")
-                print(f"    hardware    : {w['hardware']}")
-                if st == "META_CONFIRMED":
-                    n_confirmed += 1
-            elif st == "no wall" and w.get("local_fix"):
-                print(f"  [no new DOF]  {w['name']}: {w['local_fix']}")
+        for d in r["diagnoses"]:
+            st = d.get("status")
+            if st in ("CONFLICT", "MODEL_GAP"):
+                g = d.get("grounded", {})
+                tag = "[MISSING DIMENSION - CONFIRMED]" if st == "CONFLICT" else "[MISSING DIMENSION - MODEL GAP]"
+                print(f"\n  {tag}  {d['name']}   (subsystem: {d['subsystem']})")
+                print(f"    grounded node : {g.get('node','?')}  (in_library={g.get('in_library')}, descent {g.get('descent_depth','?')})")
+                print(f"    conflicting   : {d['conflict_pair'][0]}  vs  {d['conflict_pair'][1]}")
+                if "demands" in d:
+                    print(f"      - {d['conflict_pair'][0]}: {d['demands'][0]}")
+                    print(f"      - {d['conflict_pair'][1]}: {d['demands'][1]}")
+                print(f"    evidence      : {d.get('evidence')}")
+                print(f"    why           : {d['why']}")
+                print(f"    MISSING AXIS  : {d['missing_dof']}")
+                if st == "CONFLICT":
+                    n_conf += 1
+            elif st == "ABSOLUTE_LIMIT":
+                print(f"\n  [ABSOLUTE LIMIT]  {d['name']}  ({d['subsystem']}): {d['why']}")
+            elif st == "no_wall" and d.get("example_config"):
+                print(f"  [no new axis]  {d['name']}: value fix exists -> {d.get('example_config')}")
 
-    print("\n" + "=" * 84)
+    print("\n" + "=" * 86)
     print("READING IT")
-    print(f"  CONFIRMED missing dimensions (proven by the solve): {n_confirmed}  - seeker etendue + battery Ragone.")
-    print("  Same generic mechanism, two unrelated physics domains, neither hand-shaped. It stayed silent on")
-    print("  the control (a value sufficed). And in the ROTOR case it did something subtler and more honest:")
-    print("  it found a REAL conserved trade (fixed-pitch hover vs dash) that the current reduced model cannot")
-    print("  even price - so it flags BOTH a missing design axis (variable pitch) AND a missing model fidelity.")
-    print("  A meta-requirement is only CONFIRMED after value (V1) and structure (V2) are shown exhausted -")
-    print("  that is the honest line between 'tune it' and 'the design is missing an axis'.")
+    print(f"  Confirmed missing dimensions (proven by the solve): {n_conf}  (seeker etendue, battery Ragone).")
+    print("  One algorithm processed all three from DATA; the engine holds no domain knowledge. The rotor case")
+    print("  is honestly a MODEL-GAP: its 'hover-efficiency' constraint is unpriceable (momentum-theory hover")
+    print("  power is pitch-independent), so the conflict is real physics the current model cannot score.")
+    print("  Adding a 4th domain = adding a 4th TradeInvariant record. No engine change.")
 
 
 if __name__ == "__main__":

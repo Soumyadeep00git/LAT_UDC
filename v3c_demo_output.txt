@@ -1,64 +1,61 @@
-====================================================================================
-V3c - GENERAL META-REQUIREMENT ENGINE   (conservation-wall detector)
-====================================================================================
-For each mission: V1 tunes VALUES, V2 rearranges STRUCTURE; then the engine scans grounded
-trade-invariants and, where a conserved budget is over-saturated, prescribes the MISSING
-DIMENSION - decoupled from the hardware that would supply it. Nothing is hand-flagged.
+======================================================================================
+V3c - UNIFORM META-REQUIREMENT DIAGNOSTIC   (one engine, domains added as grounded DATA)
+======================================================================================
+REGISTRY (data records, not engine code): ['seeker', 'battery', 'pitch']
+For every record the SAME steps run: engaged? -> sample the free config space -> evaluate each
+constraint at each point -> any point meets all? (value fix) / a pair met alone but never together?
+(missing axis) / a constraint unpriceable? (model gap).
 
-------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------
 CONTROL - a modest mission a value/structure should meet
   V1 (values)   : met=True  exhausted=False  failing=None
-  ==> RESOLVED BY: V1 (value)
+  ==> VERDICT: value sufficed (V1)
 
-------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------
 SEEKER - long detection AND a wide search cone  (optics)
   V1 (values)   : met=True  exhausted=False  failing=None
-  ==> RESOLVED BY: V3c (missing dimension) - CONFIRMED
+  ==> VERDICT: MISSING DIMENSION (confirmed by the solve)
 
-  [META-REQUIREMENT - CONFIRMED]  seeker space-bandwidth (etendue)   subsystem: seeker
-    grounded in : optics.space_bandwidth_product (in_library=True, descent 0)
-    established : solve (optics): even at the pixel ceiling the static field of view < search cone
-    budget      : SBP = n_pixels (<= 8192) fixes resolution x instantaneous coverage
-    demand      : detect 2500 m needs IFOV 0.070 mrad; the 60 deg cone is 0.84 sr, but even 8192 px cover only 0.329 sr at once
-    MISSING DOF : ADD A TEMPORAL / SCAN DEGREE OF FREEDOM (angular motion over time)
-    quantify    : cover 0.84 sr in 3 looks -> revisit 0.04 s (need <= 1.5 s: OK)
-    hardware    : gimbal | rotating mount | electronic beam-steering  (architecture picks; physics only asks for motion)
+  [MISSING DIMENSION - CONFIRMED]  seeker space-bandwidth (etendue)   (subsystem: seeker)
+    grounded node : optics.space_bandwidth_product  (in_library=True, descent 0)
+    conflicting   : detect  vs  coverage
+      - detect: detect the target at the required range (needs fine IFOV)
+      - coverage: cover the search cone instantaneously (needs wide FOV)
+    evidence      : {'detect': '15/30 configs satisfy it', 'coverage': '4/30 configs satisfy it', 'jointly': '0 configs satisfy both'}
+    why           : each demand is reachable alone but no single configuration reaches both
+    MISSING AXIS  : ADD A TEMPORAL / SCAN DEGREE OF FREEDOM (coverage accumulates over time)
 
-------------------------------------------------------------------------------------
-BATTERY - long endurance AND high-g burst  (electrochemistry)
+--------------------------------------------------------------------------------------
+BATTERY - endurance AND high-g burst  (electrochemistry)
   V1 (values)   : met=False  exhausted=True  failing=a_max_g
-  V2 (structure): feasible=False  (3 rotors, max worst-margin (none feasible))
-  ==> RESOLVED BY: V3c (missing dimension) - CONFIRMED
+  V2 (structure): feasible=False  (3 rotors)
+  ==> VERDICT: MISSING DIMENSION (confirmed by the solve)
 
-  [META-REQUIREMENT - CONFIRMED]  battery Ragone (energy vs power)   subsystem: energy
-    grounded in : electrochemistry_batteries.ragone_tradeoff (in_library=True, descent 6)
-    established : solve (V1 exhausted + V2 infeasible; Ragone frontier over-saturated)
-    budget      : one chemistry = one point on the Ragone frontier; energy and power trade
-    demand      : burst needs 6990 W/kg; the frontier gives only 120 Wh/kg there, but endurance needs 275 Wh/kg from the same pack
-    MISSING DOF : ADD A SECOND ENERGY DOMAIN (energy channel || power channel) decoupling energy from power
-    quantify    : energy cells (~250 Wh/kg) for cruise + power cells/supercap (~6000 W/kg) for burst; one pack cannot be both
-    hardware    : hybrid pack | supercapacitor buffer | dual-chemistry bus  (architecture picks; physics asks to split energy from power)
+  [MISSING DIMENSION - CONFIRMED]  battery Ragone (energy vs power)   (subsystem: energy)
+    grounded node : electrochemistry_batteries.ragone_tradeoff  (in_library=True, descent 6)
+    conflicting   : energy  vs  power
+      - energy: store enough Wh/kg for the endurance
+      - power: deliver enough W/kg for the burst
+    evidence      : {'energy': '2/7 configs satisfy it', 'power': '2/7 configs satisfy it', 'jointly': '0 configs satisfy both'}
+    why           : each demand is reachable alone but no single configuration reaches both
+    MISSING AXIS  : ADD A SECOND ENERGY DOMAIN (energy channel || power channel) decoupling energy from power
 
-------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------
 ROTOR - long loiter AND high dash speed  (aerodynamics)
   V1 (values)   : met=True  exhausted=False  failing=None
-  ==> RESOLVED BY: V1 (value)
+  ==> VERDICT: value sufficed (V1)
 
-  [META-REQUIREMENT - MODEL GAP]  propeller advance-ratio efficiency   subsystem: propulsion
-    grounded in : aerodynamics.propeller_advance_efficiency (in_library=True, descent 6)
-    established : UNPRICED by the reduced model: capabilities() hover power = momentum theory (fixed figure-of-merit), independent of pitch - the conflict is invisible to the solve
-    budget      : a fixed pitch peaks at one advance ratio J* ~ 0.8*(P/D); one value, one peak
-    demand      : hover wants J~0.12 (pitch ~1.6 in); dash at 45 m/s wants J~0.90 (pitch ~12.1 in) at 10988 rpm
-    MISSING DOF : ADD A PITCH-ACTUATION DEGREE OF FREEDOM (pitch as a function of flight state)
-    quantify    : a single pitch must span 10.5 in between the two efficient points; variable pitch tracks J. (To SCORE this, endurance needs a pitch-aware/BEMT efficiency model.)
-    hardware    : variable-pitch hub | swashplate (collective) | tilt  (architecture picks; physics asks for pitch motion)
+  [MISSING DIMENSION - MODEL GAP]  propeller advance-ratio efficiency   (subsystem: propulsion)
+    grounded node : aerodynamics.propeller_advance_efficiency  (in_library=True, descent 6)
+    conflicting   : hover_eff  vs  dash
+    evidence      : {'dash': '2/5 configs satisfy it'}
+    why           : constraint 'hover_eff' is unpriceable in the reduced model, so the conflict cannot be confirmed by the solve - the trade is real but the model lacks the fidelity to score it
+    MISSING AXIS  : ADD A PITCH-ACTUATION DEGREE OF FREEDOM (pitch as a function of flight state)
 
-====================================================================================
+======================================================================================
 READING IT
-  CONFIRMED missing dimensions (proven by the solve): 2  - seeker etendue + battery Ragone.
-  Same generic mechanism, two unrelated physics domains, neither hand-shaped. It stayed silent on
-  the control (a value sufficed). And in the ROTOR case it did something subtler and more honest:
-  it found a REAL conserved trade (fixed-pitch hover vs dash) that the current reduced model cannot
-  even price - so it flags BOTH a missing design axis (variable pitch) AND a missing model fidelity.
-  A meta-requirement is only CONFIRMED after value (V1) and structure (V2) are shown exhausted -
-  that is the honest line between 'tune it' and 'the design is missing an axis'.
+  Confirmed missing dimensions (proven by the solve): 2  (seeker etendue, battery Ragone).
+  One algorithm processed all three from DATA; the engine holds no domain knowledge. The rotor case
+  is honestly a MODEL-GAP: its 'hover-efficiency' constraint is unpriceable (momentum-theory hover
+  power is pitch-independent), so the conflict is real physics the current model cannot score.
+  Adding a 4th domain = adding a 4th TradeInvariant record. No engine change.
