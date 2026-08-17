@@ -55,6 +55,9 @@ from thrust_field import thrust as field_thrust, power as field_power  # noqa: E
 from blade_design import design as blade_from_thrust                  # noqa: E402
 from blade_design import design_iterate as blade_iterate, forward_bemt, to_stl as blade_to_stl  # noqa: E402
 
+# ---- MISSION front door: a threat spec drives the whole pipeline --------------------------------
+from intercept_mission import design_for_threat, report as intercept_report  # noqa: E402
+
 # ---- the whole pipeline: solve -> resolve -> diagnose -------------------------------------------
 import physics_pipeline                                               # noqa: E402
 
@@ -88,7 +91,7 @@ __all__ = [
     "Network", "ElementType", "SOURCE", "RESISTANCE", "ORIFICE", "Law", "assemble_laws",
     "v1_repair", "caps_of", "PARAMS", "BOUNDS", "METRICS", "v2_adapt", "v3_meta_requirements",
     "autoderive", "v3_leashless", "solve_uav_seeker", "etendue_gate", "resolve",
-    "engage", "max_interception", "intercept_optimize",
+    "engage", "max_interception", "intercept_optimize", "design_for_threat", "intercept_report",
     "solve_max_thrust_field", "field_thrust", "field_power",
     "blade_from_thrust", "blade_iterate", "forward_bemt", "blade_to_stl",
     "run_pipeline", "load_backends", "DEFAULT_CFG", "DEFAULT_MISSION",

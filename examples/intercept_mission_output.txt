@@ -1,0 +1,22 @@
+====================================================================================
+INTERCEPT MISSION  -  spec: an interceptor for a 100 m/s target
+====================================================================================
+THE PIPELINE FOCUSES ON:
+   + v_max, a_max, turn-rate (a_max/v_max), endurance, mass  <- V1 values + V2 rotor count
+   + the interception KINEMATICS vs the threat set (point-mass pursuit, proportional navigation)
+   + the seeker sensing radius (a hyperparameter here, 300 m) as the engagement start range
+IT DOES NOT MODEL (out of scope, by design):
+   - threat EVASION (dumb targets only: fixed / straight-line; the smart-evader game is deferred)
+   - guidance/autopilot realism, control-loop stability, latency
+   - flight dynamics beyond point-mass; wind, gusts, aeroelasticity
+   - structures/thermal beyond total mass; cost, manufacturability
+   - TOPOLOGY change (the airframe stays a quad; it cannot invent a jet/rocket to go faster)
+
+baseline quad: v_max 16 | a_max 2.5g | endur 27min  ->  intercepts 5% of 100 m/s threats (all directions)
+
+BEST design the physics found (searched 27 buildable):
+   3 rotors, D 13.4in, pitch 9.2, 10.7S 10747mAh
+   v_max 46 m/s | a_max 5.3g | endur 45min | mass 4.29kg
+   ==> INTERCEPTS 10% of 100 m/s targets (all directions)
+
+BINDING WALL: v_max (46 m/s) < threat (100 m/s): tail-chase is impossible; only near head-on closes. This is a KINEMATIC / TOPOLOGY wall - a quad is the wrong platform class to catch a 100 m/s target. Breaking it needs a faster class (see v3_leashless: jet/rocket), which is realization, deliberately out of scope.
