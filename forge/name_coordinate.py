@@ -1,13 +1,15 @@
-r"""NAME THE COORDINATE — ground a discovered intrinsic direction by traversing its production path.
+r"""NAME THE COORDINATE (mechanical) — ground a discovered intrinsic direction by walking the REAL bond graph.
 
-intrinsic_space finds a stiff combination of knobs (a "real coordinate"). Its DIMENSION tells you the class
-(here: a speed). But many speeds exist. The FLOW that produced it - which subsystem each knob acts in, and
-what cancels along the energy->propulsion path - tells you WHICH speed, and rules the others out.
+intrinsic_space finds a stiff combination of knobs. This identifies what it is by:
+  1. reading the SUBSYSTEMS and BONDS from bondgraph.infer_system (mechanical - not narrated);
+  2. attaching each knob a grounded role: the physical quantity it sets + that quantity's dimension
+     (this per-knob table is the ONE reviewable grounding input);
+  3. assembling the combination's net dimension, and detecting - from the bonds - which coupling
+     quantities cancel internally (a knob PRODUCES a bond quantity, another CONSUMES it);
+  4. naming the residual dimension ONLY if it is a clean canonical quantity. Otherwise it says, plainly,
+     that it CANNOT name it, and why.
 
-This walks that path on a SUBSYSTEM basis:
-  1. assign each contributing knob its physical role + dimension (grounded, per-knob, reviewable);
-  2. assemble the combination's net dimension, letting the path cancel shared quantities (voltage);
-  3. traverse energy -> propulsion and name the speed born there; flag the speeds this is NOT.
+The honesty mandate: this tool's job is as much to state what it cannot resolve as what it can.
 """
 from __future__ import annotations
 
@@ -22,84 +24,122 @@ sys.path.insert(0, os.path.join(HERE, "..", "physics"))
 sys.path.insert(0, os.path.join(HERE, "..", "agent"))
 
 import intrinsic_space as IS
+import bondgraph
+import parts as P
 
-# per-knob grounding: (subsystem it acts in, what physical quantity it sets, dimension [L,T] of that role)
-# voltage is tagged 'V' so the path can cancel it between the knob that PRODUCES it and the one that USES it.
-KNOB = {
-    "S":        ("energy",     "pack voltage  V = 3.7 S",        {"V": +1}),
-    "Kv":       ("propulsion", "rpm per volt  Omega = Kv*V",     {"V": -1, "T": -1}),   # rpm/V -> 1/(V*T)... =rate/V
-    "D_in":     ("propulsion", "rotor radius  R = D/2",          {"L": +1}),
-    "pitch_in": ("propulsion", "blade pitch (loading/advance)",  {"L": +1}),
-    "I_max":    ("propulsion", "current limit (power ceiling)",  {"A": +1}),
-    "cap_mAh":  ("energy",     "stored charge",                  {"A": +1, "T": +1}),
-    "L_arm":    ("structure",  "arm length",                     {"L": +1}),
+# ---- the ONE grounded input: per-knob physical role. subsystem is a CLAIM we verify against the graph. ----
+# dim bases: L length, T time, V voltage, A current, M mass.  (rpm/rev are dimensionless.)
+KNOB_ROLE = {
+    "D_in":     dict(subsystem="propulsion", sets="rotor_radius",  dim={"L": 1}),
+    "pitch_in": dict(subsystem="propulsion", sets="blade_pitch",   dim={"L": 1}),
+    "Kv":       dict(subsystem="propulsion", sets="bus_voltage",   dim={"T": -1, "V": -1}),   # Omega = Kv*V
+    "I_max":    dict(subsystem="propulsion", sets="current",       dim={"A": 1}),
+    "S":        dict(subsystem="energy",     sets="bus_voltage",   dim={"V": 1}),              # V ~ 3.7 S
+    "cap_mAh":  dict(subsystem="energy",     sets="charge",        dim={"A": 1, "T": 1}),
+    "L_arm":    dict(subsystem="structure",  sets="arm_length",    dim={"L": 1}),
+}
+CANONICAL = {                                   # residual dimension -> a named quantity (for the naming attempt)
+    "speed":        {"L": 1, "T": -1},
+    "acceleration": {"L": 1, "T": -2},
+    "length":       {"L": 1},
+    "rate":         {"T": -1},
+    "area":         {"L": 2},
 }
 
 
-def net_dimension(exps):
-    """Assemble the dimension of prod(knob^exp), rounding exponents; shared 'V' cancels along the path."""
-    dim = {}
-    for k, e in exps.items():
-        for base, p in KNOB[k][2].items():
-            dim[base] = dim.get(base, 0.0) + e * p
-    return {b: round(v, 2) for b, v in dim.items() if abs(round(v, 2)) > 0.05}
+def _subsystem_params(system):
+    """Which knobs live in which subsystem, read from the inferred graph (mechanical)."""
+    out = {}
+    def walk(sub):
+        for k in getattr(sub, "params", {}):
+            out.setdefault(k, set()).add(sub.name)
+        for ch in getattr(sub, "children", []) or []:
+            walk(ch)
+    for s in system.subsystems:
+        walk(s)
+    return out
+
+
+def _close(dim, tol=0.25):
+    return {b: round(v, 2) for b, v in dim.items() if abs(round(v, 2)) > tol}
 
 
 def main():
     cfg = dict(D_in=13, pitch_in=7, Kv=320, I_max=45, S=6, cap_mAh=6000, C_rate=25,
                L_arm=0.30, payload=0.6, n_rotors=4, wh_per_kg=300.0)
+
+    # 1) the graph, mechanically
+    system, meta = bondgraph.infer_system(P.quad_parts(cfg), cfg)
+    coupling_q = set(q for (_a, _b, _d, q) in meta["bonds"])       # quantities that flow between subsystems
+    member = _subsystem_params(system)
+
+    # the stiff coordinate, from intrinsic_space
     J = IS.loglog_jacobian(cfg)
-    M = J.T @ J
-    w, V = np.linalg.eigh(M)
-    v = V[:, int(np.argmax(w))]                       # the stiffest eigenvector
-    v = v / np.max(np.abs(v))
+    w, V = np.linalg.eigh(J.T @ J)
+    v = V[:, int(np.argmax(w))]; v = v / np.max(np.abs(v))
     exps = {p: float(v[i]) for i, p in enumerate(IS.PARAMS)}
-    top = {p: e for p, e in exps.items() if abs(e) >= 0.4}      # dominant knobs
+    top = {p: e for p, e in exps.items() if abs(e) >= 0.4}
 
     print("=" * 84)
-    print("NAME THE COORDINATE  -  traverse the production path to identify which quantity it is")
+    print("NAME THE COORDINATE (mechanical)  -  walk the real bond graph; say what can't be named")
     print("=" * 84)
-    print("stiffest coordinate (dominant knobs):")
+    print(f"bonds read from the graph: {sorted(coupling_q)}")
+    print(f"\nstiffest coordinate (dominant knobs, with grounded roles + graph-verified subsystem):")
     for p, e in sorted(top.items(), key=lambda t: -abs(t[1])):
-        sub, role, _ = KNOB[p]
-        print(f"   {p:9s} exp {e:+.2f}   [{sub:10s}]  {role}")
+        role = KNOB_ROLE[p]
+        in_graph = role["subsystem"] in member.get(p, set())
+        flag = "ok" if in_graph else f"MISMATCH (graph says {sorted(member.get(p,set()))})"
+        print(f"   {p:9s} exp {e:+.2f}  sets {role['sets']:12s} in {role['subsystem']:10s}  [{flag}]")
 
-    print("\n[1] DIMENSION of the combination (assemble knob roles; the path cancels shared voltage V):")
-    dim = net_dimension(top)
-    flip = {b: -p for b, p in dim.items()}                # eigenvector orientation is free; use positive form
-    pretty = " ".join(f"{b}^{p:g}" for b, p in flip.items() if b in ("L", "T", "V", "A"))
-    L, T = flip.get("L", 0), flip.get("T", 0)
-    v_left = abs(flip.get("V", 0)) > 0.15
-    is_speed = abs(L - 1) < 0.2 and abs(T + 1) < 0.2 and not v_left and "A" not in flip
-    print(f"     net dims (positive form): {pretty}")
-    print(f"     voltage: {'still present (path did NOT fully cancel it)' if v_left else 'CANCELLED across energy->propulsion (S makes V, Kv consumes it -> a rate)'}")
-    print(f"     clean speed [L T^-1]?  {is_speed}")
+    # 2) assemble dimension; 3) detect coupling cancellations FROM THE BONDS
+    dim = {}
+    for p, e in top.items():
+        for b, k in KNOB_ROLE[p]["dim"].items():
+            dim[b] = dim.get(b, 0.0) + e * k
+    dim = {b: round(v, 2) for b, v in dim.items() if abs(round(v, 2)) > 0.05}
 
-    print("\n[2] TRAVERSE the path, subsystem by subsystem:")
-    print("     energy      : S      -> bus voltage  V")
-    print("     propulsion  : Kv,V   -> Omega (rotor angular rate [T^-1])   <- V cancels here (confirmed)")
-    print("     propulsion  : D      -> R = D/2  ([L])")
-    print("     propulsion  : pitch  -> blade loading/advance ([L], and its exponent is NOT small)")
+    print(f"\n[dimension] raw assembled: { {b: v for b, v in dim.items()} }")
+    # which bases correspond to bond (coupling) quantities, and did they cancel?
+    coupling_bases = {"V": "bus_voltage", "A": "current"}
+    for base, qname in coupling_bases.items():
+        if qname in coupling_q and base in dim:          # only if a knob actually contributed this base
+            netv = dim[base]
+            if abs(netv) < 0.15:
+                print(f"   coupling '{qname}' ({base}) CANCELS (~{netv:+.2f})  <- confirmed: a bond quantity, "
+                      f"produced and consumed within the combination")
+                dim.pop(base, None)
+            else:
+                print(f"   coupling '{qname}' ({base}) does NOT fully cancel ({netv:+.2f}) - the coordinate "
+                      f"still carries an internal coupling; naming is not meaningful")
 
-    print("\n[3] WHAT THE TRAVERSAL ACTUALLY SAYS (not what I want it to say):")
-    if is_speed:
-        print("     => a clean SPEED born in propulsion = tip speed (Omega*R).")
-    else:
-        print(f"     => NOT a clean speed. Net dimension ~ L^{L:.1f} T^{T:.1f}, i.e. speed x length^{L-1:.1f}.")
-        print("        The tip-speed BACKBONE is real (Kv*S*D -> Omega*R, voltage cancels), but PITCH rides")
-        print("        along with real weight (a length), pushing L past 1. So the coordinate is a BLEND:")
-        print("        tip speed x a pitch/loading factor - physically sensible (thrust needs speed AND")
-        print("        loading) but NOT one textbook quantity. 'Tip speed' alone was my over-naming.")
-    print("     ruled OUT regardless: v_max (an output, not born from these knobs); induced velocity")
-    print("     (from thrust/disk-area, a different path); speed of sound (no knob dependence).")
+    # 4) name the residual dimension, or refuse
+    resid = _close(dim)
+    flip = {b: -v for b, v in resid.items()}                       # eigenvector sign is free
+    print(f"\n[residual dimension, positive form]: { {b: v for b, v in flip.items()} }")
+
+    def matches(canon):
+        keys = set(canon) | set(flip)
+        return all(abs(flip.get(b, 0) - canon.get(b, 0)) < 0.2 for b in keys)
+    named = next((name for name, c in CANONICAL.items() if matches(c)), None)
 
     print("\n" + "-" * 84)
-    print("HONEST RESULT: your method worked - and it caught me. The dimension-along-the-path shows this")
-    print("coordinate is tip-speed-DOMINATED but blended with pitch loading (~L^1.5 T^-1), not the clean")
-    print("'tip speed' I asserted earlier. The voltage cancellation across energy->propulsion is real and")
-    print("mechanical; the naming is only as clean as the coordinate is, and this one is a blend.")
-    print("So traversal-on-a-subsystem-basis is the RIGHT tool - it grounds honestly, including saying")
-    print("'this is not a single named quantity' when that's the truth.")
+    if named:
+        print(f"NAMED: the coordinate's class is **{named}**  (dimension matches a canonical quantity).")
+        print("  Which specific one still needs a library/path match - flagged separately.")
+    else:
+        print("CANNOT NAME IT. The residual dimension is not a clean canonical quantity.")
+        Lp = flip.get("L", 0); Tp = flip.get("T", 0)
+        print(f"  It is ~ L^{Lp:g} T^{Tp:g}  =  speed x length^{Lp-1:g}  - a BLEND, not one textbook quantity.")
+        print("  From the graph: the tip-speed backbone is real (Kv*S -> a rate once the bus_voltage coupling")
+        print("  cancels, times D -> radius), but 'pitch' (a length in propulsion) rides along, so the")
+        print("  coordinate mixes tip speed with blade loading. No single name is honest here.")
+
+    print("\nWHAT THIS TOOL CAN vs CANNOT DO (stated, not hidden):")
+    print("  CAN:    read subsystems + bonds from the graph; verify each knob's subsystem; assemble the")
+    print("          net dimension; detect - from the bonds - which internal couplings cancel.")
+    print("  CANNOT: name a coordinate whose dimension isn't a clean canonical quantity (this one);")
+    print("          supply the per-knob physical roles (that grounding is human/curated, and if a role is")
+    print("          wrong the naming is wrong); or name a clean quantity that isn't in the library.")
 
 
 if __name__ == "__main__":

@@ -1,36 +1,29 @@
 ====================================================================================
-NAME THE COORDINATE  -  traverse the production path to identify which quantity it is
+NAME THE COORDINATE (mechanical)  -  walk the real bond graph; say what can't be named
 ====================================================================================
-stiffest coordinate (dominant knobs):
-   S         exp -1.00   [energy    ]  pack voltage  V = 3.7 S
-   D_in      exp -0.97   [propulsion]  rotor radius  R = D/2
-   Kv        exp -0.93   [propulsion]  rpm per volt  Omega = Kv*V
-   pitch_in  exp -0.56   [propulsion]  blade pitch (loading/advance)
+bonds read from the graph: ['bus_voltage', 'current', 'i_burst_per_rotor', 'thrust']
 
-[1] DIMENSION of the combination (assemble knob roles; the path cancels shared voltage V):
-     net dims (positive form): L^1.53 V^0.07 T^-0.93
-     voltage: CANCELLED across energy->propulsion (S makes V, Kv consumes it -> a rate)
-     clean speed [L T^-1]?  False
+stiffest coordinate (dominant knobs, with grounded roles + graph-verified subsystem):
+   S         exp -1.00  sets bus_voltage  in energy      [ok]
+   D_in      exp -0.97  sets rotor_radius in propulsion  [ok]
+   Kv        exp -0.93  sets bus_voltage  in propulsion  [ok]
+   pitch_in  exp -0.56  sets blade_pitch  in propulsion  [ok]
 
-[2] TRAVERSE the path, subsystem by subsystem:
-     energy      : S      -> bus voltage  V
-     propulsion  : Kv,V   -> Omega (rotor angular rate [T^-1])   <- V cancels here (confirmed)
-     propulsion  : D      -> R = D/2  ([L])
-     propulsion  : pitch  -> blade loading/advance ([L], and its exponent is NOT small)
+[dimension] raw assembled: {'L': -1.53, 'T': 0.93, 'V': -0.07}
+   coupling 'bus_voltage' (V) CANCELS (~-0.07)  <- confirmed: a bond quantity, produced and consumed within the combination
 
-[3] WHAT THE TRAVERSAL ACTUALLY SAYS (not what I want it to say):
-     => NOT a clean speed. Net dimension ~ L^1.5 T^-0.9, i.e. speed x length^0.5.
-        The tip-speed BACKBONE is real (Kv*S*D -> Omega*R, voltage cancels), but PITCH rides
-        along with real weight (a length), pushing L past 1. So the coordinate is a BLEND:
-        tip speed x a pitch/loading factor - physically sensible (thrust needs speed AND
-        loading) but NOT one textbook quantity. 'Tip speed' alone was my over-naming.
-     ruled OUT regardless: v_max (an output, not born from these knobs); induced velocity
-     (from thrust/disk-area, a different path); speed of sound (no knob dependence).
+[residual dimension, positive form]: {'L': 1.53, 'T': -0.93}
 
 ------------------------------------------------------------------------------------
-HONEST RESULT: your method worked - and it caught me. The dimension-along-the-path shows this
-coordinate is tip-speed-DOMINATED but blended with pitch loading (~L^1.5 T^-1), not the clean
-'tip speed' I asserted earlier. The voltage cancellation across energy->propulsion is real and
-mechanical; the naming is only as clean as the coordinate is, and this one is a blend.
-So traversal-on-a-subsystem-basis is the RIGHT tool - it grounds honestly, including saying
-'this is not a single named quantity' when that's the truth.
+CANNOT NAME IT. The residual dimension is not a clean canonical quantity.
+  It is ~ L^1.53 T^-0.93  =  speed x length^0.53  - a BLEND, not one textbook quantity.
+  From the graph: the tip-speed backbone is real (Kv*S -> a rate once the bus_voltage coupling
+  cancels, times D -> radius), but 'pitch' (a length in propulsion) rides along, so the
+  coordinate mixes tip speed with blade loading. No single name is honest here.
+
+WHAT THIS TOOL CAN vs CANNOT DO (stated, not hidden):
+  CAN:    read subsystems + bonds from the graph; verify each knob's subsystem; assemble the
+          net dimension; detect - from the bonds - which internal couplings cancel.
+  CANNOT: name a coordinate whose dimension isn't a clean canonical quantity (this one);
+          supply the per-knob physical roles (that grounding is human/curated, and if a role is
+          wrong the naming is wrong); or name a clean quantity that isn't in the library.
