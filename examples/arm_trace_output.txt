@@ -1,0 +1,48 @@
+====================================================================================
+ARM ESSENCE-SOLVE  -  thinking process, step by step
+====================================================================================
+GIVEN: tip load 60 N | arm 30 cm | carbon limit 350 MPa | wall 1.0 mm | min radius 3 mm
+
+For each station x along the arm (root -> tip), the tool reasons:
+
+  x = 0.000 m  (0% out):
+    1. bending moment    M = 60 x (0.30-0.000) = 18.00 N-m        [statics: load x lever to tip]
+    2. strength needed   Z = M / limit = 18.00/350e6 = 5.14e-08 m^3   [keep stress <= limit]
+    3. invert the tube   R = sqrt(Z/(pi t)) =  4.05 mm  ->  OD   8.1 mm  [thin-wall: Z=pi R^2 t]
+    4. floor check       4.05 mm >= 3 mm min  ->  keep
+    5. verify stress     sigma/limit = 1.00   [fully stressed (ideal)]
+
+  x = 0.075 m  (25% out):
+    1. bending moment    M = 60 x (0.30-0.075) = 13.50 N-m        [statics: load x lever to tip]
+    2. strength needed   Z = M / limit = 13.50/350e6 = 3.86e-08 m^3   [keep stress <= limit]
+    3. invert the tube   R = sqrt(Z/(pi t)) =  3.50 mm  ->  OD   7.0 mm  [thin-wall: Z=pi R^2 t]
+    4. floor check       3.50 mm >= 3 mm min  ->  keep
+    5. verify stress     sigma/limit = 1.00   [fully stressed (ideal)]
+
+  x = 0.150 m  (50% out):
+    1. bending moment    M = 60 x (0.30-0.150) =  9.00 N-m        [statics: load x lever to tip]
+    2. strength needed   Z = M / limit =  9.00/350e6 = 2.57e-08 m^3   [keep stress <= limit]
+    3. invert the tube   R = sqrt(Z/(pi t)) =  2.86 mm  ->  OD   5.7 mm  [thin-wall: Z=pi R^2 t]
+    4. floor DECISION    2.86 mm < 3 mm min  ->  raise R to 3 mm (OD 6.0)  [manufacturing floor OVERRIDES the essence]
+    5. verify stress     sigma/limit = 0.91   [over-built by the floor (honest: not fully stressed here)]
+
+  x = 0.225 m  (75% out):
+    1. bending moment    M = 60 x (0.30-0.225) =  4.50 N-m        [statics: load x lever to tip]
+    2. strength needed   Z = M / limit =  4.50/350e6 = 1.29e-08 m^3   [keep stress <= limit]
+    3. invert the tube   R = sqrt(Z/(pi t)) =  2.02 mm  ->  OD   4.0 mm  [thin-wall: Z=pi R^2 t]
+    4. floor DECISION    2.02 mm < 3 mm min  ->  raise R to 3 mm (OD 6.0)  [manufacturing floor OVERRIDES the essence]
+    5. verify stress     sigma/limit = 0.45   [over-built by the floor (honest: not fully stressed here)]
+
+  x = 0.300 m  (100% out):
+    1. bending moment    M = 60 x (0.30-0.300) =  0.00 N-m        [statics: load x lever to tip]
+    2. strength needed   Z = M / limit =  0.00/350e6 = 0.00e+00 m^3   [keep stress <= limit]
+    3. invert the tube   R = sqrt(Z/(pi t)) =  0.00 mm  ->  OD   0.0 mm  [thin-wall: Z=pi R^2 t]
+    4. floor DECISION    0.00 mm < 3 mm min  ->  raise R to 3 mm (OD 6.0)  [manufacturing floor OVERRIDES the essence]
+    5. verify stress     sigma/limit = 0.00   [over-built by the floor (honest: not fully stressed here)]
+
+  THEN, over the whole span:
+    6. integrate mass    sum(density x area x dx) = 9.8 g
+    7. compare to naive  constant tube at root OD = 12.2 g  ->  taper is 20% lighter
+
+  CONCLUSION: fat where the bending is (root), thin where it isn't (tip), floored where the
+  minimum radius wins. Every step is statics + one geometry inversion - no assumed tube.

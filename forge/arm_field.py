@@ -13,6 +13,7 @@ had their analog here in OD/wall of the tube; the field is the thing optimized, 
 from __future__ import annotations
 
 import math
+import sys
 
 import numpy as np
 
@@ -49,6 +50,49 @@ def forward_stress_ratio(x, M, R):
     Z = math.pi * R ** 2 * WALL
     sigma = M / np.maximum(Z, 1e-30)
     return sigma / SIGMA_ALLOW
+
+
+def trace(T_tip=60.0, L=0.30):
+    """Show the reasoning station by station: load -> moment -> strength needed -> invert to a tube ->
+    floor decision -> verify. This is the tool's actual work, with the arithmetic exposed."""
+    print("=" * 84)
+    print("ARM ESSENCE-SOLVE  -  thinking process, step by step")
+    print("=" * 84)
+    print(f"GIVEN: tip load {T_tip:.0f} N | arm {L*100:.0f} cm | carbon limit {SIGMA_ALLOW/1e6:.0f} MPa | "
+          f"wall {WALL*1e3:.1f} mm | min radius {R_MIN*1e3:.0f} mm")
+    print("\nFor each station x along the arm (root -> tip), the tool reasons:")
+    for x in (0.0, 0.075, 0.15, 0.225, 0.30):
+        M = T_tip * (L - x)
+        Z = M / SIGMA_ALLOW
+        R_ideal = math.sqrt(Z / (math.pi * WALL)) if Z > 0 else 0.0
+        floored = R_ideal < R_MIN
+        R = max(R_ideal, R_MIN)
+        Zr = math.pi * R ** 2 * WALL
+        ratio = (M / Zr) / SIGMA_ALLOW if Zr > 0 else 0.0
+        print(f"\n  x = {x:.3f} m  ({x/L*100:.0f}% out):")
+        print(f"    1. bending moment    M = {T_tip:.0f} x ({L:.2f}-{x:.3f}) = {M:5.2f} N-m        [statics: load x lever to tip]")
+        print(f"    2. strength needed   Z = M / limit = {M:5.2f}/{SIGMA_ALLOW/1e6:.0f}e6 = {Z:.2e} m^3   [keep stress <= limit]")
+        print(f"    3. invert the tube   R = sqrt(Z/(pi t)) = {R_ideal*1e3:5.2f} mm  ->  OD {2*R_ideal*1e3:5.1f} mm  [thin-wall: Z=pi R^2 t]")
+        if floored:
+            print(f"    4. floor DECISION    {R_ideal*1e3:.2f} mm < {R_MIN*1e3:.0f} mm min  ->  raise R to {R_MIN*1e3:.0f} mm (OD {2*R*1e3:.1f})  [manufacturing floor OVERRIDES the essence]")
+        else:
+            print(f"    4. floor check       {R_ideal*1e3:.2f} mm >= {R_MIN*1e3:.0f} mm min  ->  keep")
+        verdict = "fully stressed (ideal)" if abs(ratio - 1) < 0.05 else \
+                  ("over-built by the floor (honest: not fully stressed here)" if floored else "under limit")
+        print(f"    5. verify stress     sigma/limit = {ratio:.2f}   [{verdict}]")
+
+    # the mass reasoning
+    x = np.linspace(0, L, 40)
+    M = T_tip * (L - x)
+    R = np.maximum(np.sqrt(np.maximum(M / SIGMA_ALLOW, 0) / (math.pi * WALL)), R_MIN)
+    area = 2 * math.pi * R * WALL
+    m_opt = mass_of(x, area)
+    m_const = RHO_CF * (2 * math.pi * float(R[0]) * WALL) * L
+    print("\n  THEN, over the whole span:")
+    print(f"    6. integrate mass    sum(density x area x dx) = {m_opt*1e3:.1f} g")
+    print(f"    7. compare to naive  constant tube at root OD = {m_const*1e3:.1f} g  ->  taper is {100*(1-m_opt/m_const):.0f}% lighter")
+    print("\n  CONCLUSION: fat where the bending is (root), thin where it isn't (tip), floored where the")
+    print("  minimum radius wins. Every step is statics + one geometry inversion - no assumed tube.")
 
 
 def main():
@@ -95,4 +139,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "trace":
+        trace()
+    else:
+        main()
