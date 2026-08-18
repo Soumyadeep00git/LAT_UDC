@@ -1,0 +1,23 @@
+====================================================================================
+RESIDUAL DETECTOR  -  find a hidden dimension from data (reduced FM=0.70 vs solved FM)
+====================================================================================
+
+[POSITIVE] 120 designs sampled. residual FM_real - 0.70:
+   mean -0.209  std 0.079  held-out R^2=0.53
+   per-variable dependence: {'D_in': np.float64(0.517), 'pitch_in': np.float64(0.621), 'rpm': np.float64(0.307)}
+   => HIDDEN DIMENSION FOUND: residual is structured AND generalizes (held-out R^2=0.53); it depends mainly on [pitch_in, D_in] - a dependence FM=0.70 omits.
+      grounding (human): pitch & rpm combine into blade loading / advance ratio - the axis the
+      constant FM throws away. Discovered from the residual, NOT from a pre-encoded invariant.
+
+[NEGATIVE CONTROL] residual replaced with noise of the SAME std (0.068):
+   held-out R^2=-0.05   => STRUCTURE DOES NOT GENERALIZE: residual is large (std 0.07) but does NOT predict held-out data (test R^2=-0.05). Cannot claim a hidden dimension: this is noise, or a variable I never varied, or a dependence beyond this basis - and from one residual I cannot tell which.
+
+------------------------------------------------------------------------------------
+WHAT THIS TOOL CAN vs CANNOT DO (the point, not an afterthought):
+  CAN:    detect whether a residual is structured AND generalizes (held-out R^2); rank which of
+          the varied variables carry it; and REFUSE a dimension when it's noise (control: R^2<0).
+  CANNOT: see a hidden variable it never VARIED (unexcited = invisible); distinguish - from ONE
+          residual - noise from a real-but-unmodelled variable when it fails to generalize (it
+          says 'does not generalize' rather than guessing); prove CAUSATION (correlation only -
+          needs intervention); identify a dependence beyond its basis (linear+quadratic here); or
+          work without a higher-fidelity reference to take the residual against.
