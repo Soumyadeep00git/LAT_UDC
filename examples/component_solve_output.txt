@@ -1,0 +1,48 @@
+====================================================================================
+COMPONENT SOLVE  -  the descent pipeline, one engine, repeated across components
+====================================================================================
+
+====================================================================================
+COMPONENT: arm (structure)   (objective: minimize mass(kg))
+  free vars : ['D', 't']
+  primitives: ['yield', 'buckling', 'deflection']   reduced set: ['yield']
+
+  [reduced] optimum: D=0.02786  t=0.0001   mass(kg)=0.004186   binding=[]
+  [full]    optimum: D=0.023  t=0.0003786   mass(kg)=0.01291   binding=['deflection']
+  => UNPACKED: the reduced optimum VIOLATES ['buckling', 'deflection']; the full set reshapes the design
+     (mass(kg) 0.00419 -> 0.0129). Governing physics: ['deflection'].
+
+====================================================================================
+COMPONENT: battery (energy)   (objective: minimize mass(kg))
+  free vars : ['e', 'mass']
+  primitives: ['energy', 'power']   reduced set: ['energy']
+
+  [reduced] optimum: e=260  mass=0.6   mass(kg)=0.6   binding=['energy']
+  [full]    optimum: e=187.7  mass=0.8   mass(kg)=0.8   binding=['energy', 'power']
+  => UNPACKED: the reduced optimum VIOLATES ['power']; the full set reshapes the design
+     (mass(kg) 0.6 -> 0.8). Governing physics: ['energy', 'power'].
+
+====================================================================================
+COMPONENT: seeker (optics)   (objective: minimize pixels)
+  free vars : ['focal_mm', 'npx']
+  primitives: ['detect', 'coverage']   reduced set: ['detect']
+
+  [reduced] optimum: focal_mm=26.43  npx=500   pixels=500   binding=['detect']
+  [full]    optimum: focal_mm=26.43  npx=6607   pixels=6607   binding=['detect']
+  => UNPACKED: the reduced optimum VIOLATES ['coverage']; the full set reshapes the design
+     (pixels 500 -> 6.61e+03). Governing physics: ['detect'].
+
+------------------------------------------------------------------------------------
+READING IT: one engine solved three different disciplines (structures, energy, optics) from their
+generic primitives, each unpacking its governing dimension FROM THE NUMBERS (not asserted):
+  arm     -> the yield-only optimum violates BOTH buckling and deflection; DEFLECTION governs
+             here (binds hardest), tripling the mass. (Note: which one governs is data-driven -
+             I expected buckling; the run said deflection. That's the point.)
+  battery -> POWER forces a heavier, lower-energy cell (0.6 -> 0.8 kg); both energy & power bind.
+  seeker  -> COVERAGE (etendue) forces the pixel count up ~13x (500 -> 6607).
+Extending to motor / ESC / rotor = adding their primitive specs, no engine change.
+
+HONEST BOUNDS: the per-component physics here is REDUCED (single load case, thin-wall shell
+buckling coefficient, a Ragone interpolation, small-angle optics) and each is flagged; a real
+solve needs the full disciplinary models. And it only unpacks dimensions whose PRIMITIVE is in the
+spec - a failure mode left out of the equation set stays invisible (that is the frontier).
