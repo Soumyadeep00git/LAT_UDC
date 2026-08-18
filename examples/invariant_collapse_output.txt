@@ -1,0 +1,54 @@
+====================================================================================
+INVARIANT COLLAPSE  -  thrust as f(g(h(D,n,V))), constructed in its invariant space
+====================================================================================
+
+[1] invariant coordinates from dimensional analysis (Buckingham-Pi):
+    thrust = C * density*angular_speed^2*diameter^4  * f(density*velocity^4 / (thrust*angular_speed^2))
+    => two groups: Ct = thrust/(rho n^2 D^4)   and   J = V/(n D).  These are the invariant space.
+
+[2] evaluate thrust at MATCHED advance ratio J across different sizes/speeds:
+
+  J = 0.0:
+     D(m)    rpm  V(m/s)  thrust(N)       Ct
+     0.20   7000     0.0       1.68   0.0631
+     0.30   5000     0.0       4.35   0.0631
+     0.40   3500     0.0       6.74   0.0631
+     0.50   2500     0.0       8.39   0.0631
+    -> thrust spans 1.7..8 N, but Ct varies only 0.0% -> COLLAPSED onto one value.
+
+  J = 0.2:
+     D(m)    rpm  V(m/s)  thrust(N)       Ct
+     0.20   7000     4.7       1.36   0.0510
+     0.30   5000     5.0       3.51   0.0510
+     0.40   3500     4.7       5.44   0.0510
+     0.50   2500     4.2       6.78   0.0510
+    -> thrust spans 1.4..7 N, but Ct varies only 0.0% -> COLLAPSED onto one value.
+
+  J = 0.4:
+     D(m)    rpm  V(m/s)  thrust(N)       Ct
+     0.20   7000     9.3       0.74   0.0277
+     0.30   5000    10.0       1.91   0.0277
+     0.40   3500     9.3       2.96   0.0277
+     0.50   2500     8.3       3.68   0.0277
+    -> thrust spans 0.7..4 N, but Ct varies only 0.0% -> COLLAPSED onto one value.
+
+  J = 0.6:
+     D(m)    rpm  V(m/s)  thrust(N)       Ct
+     0.20   7000    14.0      -0.01  -0.0003
+     0.30   5000    15.0      -0.02  -0.0003
+     0.40   3500    14.0      -0.04  -0.0003
+     0.50   2500    12.5      -0.05  -0.0003
+    -> thrust spans -0.0..-0 N, but Ct varies only -0.0% -> COLLAPSED onto one value.
+
+------------------------------------------------------------------------------------
+READING IT: thrust across a 4-in to 20-in propeller and 2500-7000 rpm spans orders of magnitude,
+yet at the SAME advance ratio J every one has the SAME Ct. So thrust is NOT a function of the
+geometry (D) or speed (n,V) separately - it is the single curve Ct(J), scaled by rho n^2 D^4.
+That curve IS the function in its invariant space: 1-D, fully seeable, solvable once for all sizes.
+This is f(g(h(D,n,V))): h -> J, g -> Ct(J), f -> the scaling. dia/pitch live inside h and the shape.
+
+HONEST BOUNDS: fixed blade shape, induced velocity & Reynolds ignored -> the collapse is exact by
+dynamic similarity. Add Re and Ct = Ct(J, Re): a surface, not a perfect curve (the drag-vs-viscosity
+lesson again). Dimensional analysis found the GROUPS mechanically; the CURVE Ct(J) still needs the
+physics/data - and DISCOVERING a NONLINEAR intermediate g from data alone (no given dimensions) is
+the piece still unbuilt (latent-coordinate / autoencoder+SINDy territory).
