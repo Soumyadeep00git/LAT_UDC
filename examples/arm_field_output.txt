@@ -1,0 +1,30 @@
+==================================================================================
+ARM FIELD  -  essence->decode for a STRUCTURE (optimize the section field, decode a taper)
+==================================================================================
+load: 60 N at the tip (20 N x 3 g), arm L 30 cm, carbon tube wall 1.0 mm, allowable 350 MPa
+
+DESIGNED taper (optimized section field, decoded to a tube):
+     x/L  moment(Nm)  OD(mm)  stress/allow
+    0.00       18.00     8.1          1.00
+    0.26       13.30     7.0          1.00
+    0.52        8.61     6.0          0.87
+    0.78        3.91     6.0          0.40
+    1.00        0.00     6.0          0.00
+
+FORWARD-VALIDATE: stress/allowable is ~1.0 where the beam is fully stressed; it drops below 1
+   only near the tip where the R_min floor (3 mm) takes over (13/24 stations).
+
+MASS: optimized taper 9.8 g  vs  constant-section (root OD everywhere) 12.2 g
+   -> 20% lighter, for the SAME strength. The field optimization bought that.
+
+----------------------------------------------------------------------------------
+Same pattern as the rotor, different domain: optimize the ESSENCE field (section modulus, grounded
+in beam bending), decode to EMBODIMENT (a tube taper), forward-validate (fully stressed).
+
+WHAT THIS CAN vs CANNOT DO:
+  CAN:    solve the least-mass section field for a determinate tip-loaded cantilever and decode a
+          real taper that is fully stressed, with a quantified mass saving vs the naive beam.
+  CANNOT: handle buckling, shear, stress concentrations, joints/lugs, or fatigue/dynamic loads
+          (none modelled); guarantee global optimality for statically-INDETERMINATE structures
+          (fully-stressed = optimal only for this determinate case); or pick the wall/material
+          (fixed here - co-optimizing wall+OD+material is a bigger search, not done).
