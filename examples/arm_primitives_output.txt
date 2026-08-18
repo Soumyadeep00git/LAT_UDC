@@ -1,0 +1,28 @@
+====================================================================================
+ARM FROM PRIMITIVES  -  generic discipline equations, OD & wall free; does it work up?
+====================================================================================
+given: load 60 N, arm 30 cm | primitives: bending stress, local buckling, mass
+       E 70 GPa, yield 350 MPa, buckling sigma_cr = 0.6 E t/D
+
+[A] with ONLY the yield primitive (the frame I hand-posed last time):
+    optimum: OD 26.0 mm, wall 0.10 mm  ->  mass 3.9 g
+    stress 343 MPa (yield 350)  binding: ['yield', 'buckling']
+    ...now CHECK buckling on it: sigma_cr = 162 MPa  ->  IT BUCKLES (unsafe!) - the blind spot
+
+[B] with the yield AND buckling primitives (frame removed - it must respect both):
+    optimum: OD 18.5 mm, wall 0.20 mm  ->  mass 5.5 g
+    stress 346 MPa | buckling limit 454 MPa  binding: ['yield']
+
+------------------------------------------------------------------------------------
+UNPACKED A DIMENSION (confirmed by the run): the yield-only optimum (26.0mm x 0.10mm wall) BUCKLES (sigma 343 > cr 162 MPa).
+  Buckling FORBIDS that thin-wall region, so the optimizer works up to a DIFFERENT design (18.5mm x 0.20mm): smaller, thicker-walled,
+  now buckling-safe (margin +108 MPa) and yield-limited. Buckling didn't END
+  UP binding - it RESHAPED the optimum by ruling out the unsafe corner. Cost: 5.5 g safe vs 3.9 g unsafe.
+
+WHEN DOES IT UNPACK A NEW DIMENSION?
+  The moment the objective drives the design into a regime where a primitive it HOLDS becomes
+  binding. Here: min-mass pushed the wall thin, thin walls buckle, and the buckling primitive
+  was present to catch it - so buckling 'unpacked' from slack to governing, on its own.
+  IT CANNOT unpack a dimension whose primitive it does NOT have - that needs new physics added
+  (the residual detector only HINTS one exists from data; naming/adding it is still grounding).
+  So: it unpacks the LATENT dimensions of the equations it's given; a truly new one is the frontier.
